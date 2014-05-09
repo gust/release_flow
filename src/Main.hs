@@ -8,6 +8,7 @@ import Text.ParserCombinators.Parsec
 import System.Environment (getArgs)
 import Data.List (intercalate, sortBy)
 import Data.Maybe (listToMaybe)
+import Control.Monad.Error
 
 import Types.Types
 import TagParsers (tagsParser)
@@ -19,22 +20,44 @@ import TagParsers (tagsParser)
   {- , originName  :: String -}
   {- } deriving (Show) -}
 
+type EIO = ErrorT String IO
+
 reverseSort :: Ord a => [a] -> [a]
 reverseSort = sortBy $ flip compare
 
 handleError :: Show a => a -> IO ()
 handleError = putStr . show
 
+# Pure
+# getLatestGreenTag tags
+# getLatestReleaseTag tags
+# nextMinorVersion
+# parsedTags
+
+# IO
+# fetchTags
+# cutBranch
+
 main :: IO ()
 main = do
-  (releaseNickname:_) <- getArgs
-
-  fetchTags
-  cutReleaseBranch releaseNickname
-  tagReleaseCandidate
+  eitherResult <- runErrorT release
+  case eitherResult of
+    Right result -> do
+      putStr $ show result
+    Left err -> handleError err
 
   where
-    tagReleaseCandidate :: IO ()
+
+    release :: EIO ()
+    release = do
+      (releaseNickname:_) <- lift getArgs
+
+      lift fetchTags
+      cutReleaseBranch releaseNickname
+      tagReleaseCandidate
+
+
+    tagReleaseCandidate :: EIO ()
     tagReleaseCandidate = do
       latestReleaseTag <- getLatestReleaseTag
       case latestReleaseTag of
@@ -50,25 +73,28 @@ main = do
         nextMinorVersion :: Version -> Version
         nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) patch
 
-    cutReleaseBranch :: String -> IO ()
+    cutReleaseBranch :: String -> EIO ()
     cutReleaseBranch releaseNickname = do
       tag <- getLatestGreenTag
-      case tag of
-        Left err -> handleError err
-        Right tag -> do
-          putStr $ "tag: " ++ (show tag)
-          git ["checkout", "-b", releaseNickname, (show tag)]
-          return ()
+      lift $ putStr $ "tag: " ++ (show tag)
+      lift $ git ["checkout", "-b", releaseNickname, (show tag)]
+
+      {- case tag of -}
+        {- Left err -> handleError err -}
+        {- Right tag -> do -}
+          {- putStr $ "tag: " ++ (show tag) -}
+          {- git ["checkout", "-b", releaseNickname, (show tag)] -}
+          {- return () -}
 
     fetchTags :: IO ()
     fetchTags = git ["fetch", "--tags"] >> return ()
 
-    getLatestGreenTag :: IO (Either ParseError Tag)
+    getLatestGreenTag :: EIO (Either ParseError Tag)
     getLatestGreenTag = do
       tagString <- git ["tag"]
       return $ (head . reverseSort . filter ciTag) <$> parsedTags tagString
 
-    getLatestReleaseTag :: IO (Either ParseError Tag)
+    getLatestReleaseTag :: EIO (Either ParseError Tag)
     getLatestReleaseTag = do
       tagString <- git ["tag"]
       return $ (head . reverseSort . filter releaseTag) <$> parsedTags tagString
