@@ -5,7 +5,12 @@ module Main where
 import Control.Applicative ((<$>))
 import System.Process (readProcess)
 import Text.ParserCombinators.Parsec
-import Data.Maybe (catMaybes)
+import System.Environment (getArgs)
+import Data.List (intercalate, sortBy)
+import Data.Maybe (listToMaybe)
+
+import Types.Types
+import TagParsers (tagsParser)
 
 {- data Branch = LocalBranch{ -}
     {- bName :: String -}
@@ -14,68 +19,70 @@ import Data.Maybe (catMaybes)
   {- , originName  :: String -}
   {- } deriving (Show) -}
 
-data Version = SemVer {
-    major :: Int
-  , minor :: Int
-  , patch :: Int
-  } deriving (Show)
+reverseSort :: Ord a => [a] -> [a]
+reverseSort = sortBy $ flip compare
 
-data Tag = ReleaseTag {
-    version :: Version
-  } deriving (Show)
+handleError :: Show a => a -> IO ()
+handleError = putStr . show
 
 main :: IO ()
 main = do
+  (releaseNickname:_) <- getArgs
+
   fetchTags
-  tag <- getLatestTag
-  case tag of
-    Left err -> putStr $ show err
-    Right tag -> putStr $ "tag: " ++ (show tag)
-  return ()
+  cutReleaseBranch releaseNickname
+  tagReleaseCandidate
 
   where
+    tagReleaseCandidate :: IO ()
+    tagReleaseCandidate = do
+      latestReleaseTag <- getLatestReleaseTag
+      case latestReleaseTag of
+        Left err -> handleError err
+        Right tag -> do
+          let latestRelease = version tag
+          let nextRelease = nextMinorVersion latestRelease
+          let tag = ReleaseCandidateTag nextRelease 1
+          git ["tag", show tag]
+          return ()
+
+      where
+        nextMinorVersion :: Version -> Version
+        nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) patch
+
+    cutReleaseBranch :: String -> IO ()
+    cutReleaseBranch releaseNickname = do
+      tag <- getLatestGreenTag
+      case tag of
+        Left err -> handleError err
+        Right tag -> do
+          putStr $ "tag: " ++ (show tag)
+          git ["checkout", "-b", releaseNickname, (show tag)]
+          return ()
+
     fetchTags :: IO ()
     fetchTags = git ["fetch", "--tags"] >> return ()
 
-    getLatestTag :: IO (Either ParseError Tag)
-    getLatestTag = do
-
+    getLatestGreenTag :: IO (Either ParseError Tag)
+    getLatestGreenTag = do
       tagString <- git ["tag"]
-      return $ head <$> parsedTags tagString
+      return $ (head . reverseSort . filter ciTag) <$> parsedTags tagString
 
-      where
-        parsedTags :: String -> Either ParseError [Tag]
-        parsedTags = parse tagsParser ""
+    getLatestReleaseTag :: IO (Either ParseError Tag)
+    getLatestReleaseTag = do
+      tagString <- git ["tag"]
+      return $ (head . reverseSort . filter releaseTag) <$> parsedTags tagString
 
-          where
-            tagsParser :: Parser [Tag]
-            tagsParser = catMaybes <$> (many $ releaseTagParser <|> crapParser)
+    releaseTag :: Tag -> Bool
+    releaseTag (ReleaseTag _) = True
+    releaseTag _ = False
 
-            crapParser :: Parser (Maybe Tag)
-            crapParser = tillEol >> return Nothing
+    ciTag :: Tag -> Bool
+    ciTag (CiTag _) = True
+    ciTag _ = False
 
-            releaseTagParser :: Parser (Maybe Tag)
-            releaseTagParser = do
-              string "release"
-              char '/'
-              tag <- ReleaseTag <$> semVerParser
-              eol
-              return $ Just tag
-
-            semVerParser :: Parser Version
-            semVerParser = do
-              major <- intParser
-              char '.'
-              minor <- intParser
-              char '.'
-              patch <- intParser
-              return $ SemVer major minor patch
-              where
-                intParser :: Parser Int
-                intParser = read <$> many1 digit
-
-            tillEol = manyTill (noneOf "\n") eol
-            eol = char '\n'
+    parsedTags :: String -> Either ParseError [Tag]
+    parsedTags = parse tagsParser ""
 
     git :: [String] -> IO String
     git args = readProcess "git" args ""
