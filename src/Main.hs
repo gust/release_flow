@@ -3,101 +3,93 @@
 module Main where
 
 import Control.Applicative ((<$>))
-import System.Process (readProcess)
+import System.Process (readProcessWithExitCode)
+import System.Exit (ExitCode(..))
 import Text.ParserCombinators.Parsec
 import System.Environment (getArgs)
 import Data.List (intercalate, sortBy)
 import Data.Maybe (listToMaybe)
 import Control.Monad.Error
+import Control.Monad.Trans.Writer.Strict
+import Control.Monad.IO.Class (liftIO)
 
 import Types.Types
 import TagParsers (tagsParser)
 
-{- data Branch = LocalBranch{ -}
-    {- bName :: String -}
-  {- } | RemoteBranch{ -}
-    {- bName       :: String -}
-  {- , originName  :: String -}
-  {- } deriving (Show) -}
-
-type EIO = ErrorT String IO
+type EIO =  (ErrorT String (WriterT String IO))
 
 reverseSort :: Ord a => [a] -> [a]
 reverseSort = sortBy $ flip compare
 
-handleError :: Show a => a -> IO ()
-handleError = putStr . show
-
-# Pure
-# getLatestGreenTag tags
-# getLatestReleaseTag tags
-# nextMinorVersion
-# parsedTags
-
-# IO
-# fetchTags
-# cutBranch
-
 main :: IO ()
 main = do
-  eitherResult <- runErrorT release
-  case eitherResult of
-    Right result -> do
-      putStr $ show result
-    Left err -> handleError err
+  ((), log) <- runWriterT runStuff
+  putStr $ "Log: " ++ log
 
   where
 
+    runStuff :: WriterT String IO ()
+    runStuff = do
+      eitherResult <- runErrorT release
+      case eitherResult of
+        Right result -> return ()
+        Left err -> do
+          tell err
+          return ()
+
     release :: EIO ()
     release = do
-      (releaseNickname:_) <- lift getArgs
+      (releaseNickname:_) <- liftIO getArgs
 
-      lift fetchTags
+      fetchTags
+      lift $ tell "Fetched tags\n"
       cutReleaseBranch releaseNickname
+      lift $ tell $ "Cut release branch, " ++ releaseNickname ++ "\n"
       tagReleaseCandidate
+      git ["push", "origin", releaseNickname, "--tags"]
+      return ()
 
 
     tagReleaseCandidate :: EIO ()
     tagReleaseCandidate = do
-      latestReleaseTag <- getLatestReleaseTag
-      case latestReleaseTag of
-        Left err -> handleError err
-        Right tag -> do
-          let latestRelease = version tag
-          let nextRelease = nextMinorVersion latestRelease
-          let tag = ReleaseCandidateTag nextRelease 1
-          git ["tag", show tag]
-          return ()
-
+      tagString <- git ["tag"]
+      tag <- hoistEIO $ getNextReleaseCandidateTag =<< getLatestReleaseTag tagString
+      git ["tag", show tag]
+      return ()
       where
-        nextMinorVersion :: Version -> Version
-        nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) patch
+        hoistEIO :: Either String Tag -> EIO Tag
+        hoistEIO eitherTag = case eitherTag of
+          Right tag -> return tag
+          Left err -> fail err
 
     cutReleaseBranch :: String -> EIO ()
     cutReleaseBranch releaseNickname = do
-      tag <- getLatestGreenTag
-      lift $ putStr $ "tag: " ++ (show tag)
-      lift $ git ["checkout", "-b", releaseNickname, (show tag)]
+      eitherTag <- fmap getLatestGreenTag $ git ["tag"]
+      tag <- case eitherTag of
+        Right tag -> return tag
+        Left err -> fail err
+      git ["checkout", "-b", releaseNickname, (show tag)]
+      return ()
 
-      {- case tag of -}
-        {- Left err -> handleError err -}
-        {- Right tag -> do -}
-          {- putStr $ "tag: " ++ (show tag) -}
-          {- git ["checkout", "-b", releaseNickname, (show tag)] -}
-          {- return () -}
-
-    fetchTags :: IO ()
+    fetchTags :: EIO ()
     fetchTags = git ["fetch", "--tags"] >> return ()
 
-    getLatestGreenTag :: EIO (Either ParseError Tag)
-    getLatestGreenTag = do
-      tagString <- git ["tag"]
-      return $ (head . reverseSort . filter ciTag) <$> parsedTags tagString
+    getLatestGreenTag :: String -> Either String Tag
+    getLatestGreenTag tagString = (head . reverseSort . filter ciTag) <$> parsedTags tagString
 
-    getLatestReleaseTag :: EIO (Either ParseError Tag)
-    getLatestReleaseTag = do
-      tagString <- git ["tag"]
-      return $ (head . reverseSort . filter releaseTag) <$> parsedTags tagString
+    getLatestReleaseTag :: String -> Either String Tag
+    getLatestReleaseTag tagString = (head . reverseSort . filter releaseTag) <$> parsedTags tagString
+
+    -- TODO: don't actually need Either here
+    getNextReleaseCandidateTag :: Tag -> Either String Tag
+    getNextReleaseCandidateTag tag =
+      return $ ReleaseCandidateTag nextRelease 1
+      where
+        latestRelease = version tag
+        nextRelease = nextMinorVersion latestRelease
+
+        nextMinorVersion :: Version -> Version
+        nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) patch
 
     releaseTag :: Tag -> Bool
     releaseTag (ReleaseTag _) = True
@@ -107,84 +99,18 @@ main = do
     ciTag (CiTag _) = True
     ciTag _ = False
 
-    parsedTags :: String -> Either ParseError [Tag]
-    parsedTags = parse tagsParser ""
+    parsedTags :: String -> Either String [Tag]
+    parsedTags = 
+      convertToStringError . parse tagsParser ""
+      where
+        convertToStringError :: Either ParseError a -> Either String a
+        convertToStringError (Left parseError) = Left $ show parseError
+        convertToStringError (Right x) = Right x
 
-    git :: [String] -> IO String
-    git args = readProcess "git" args ""
-
-
-  {- originalBranch <- currentBranch -}
-  {- branch <- createBranch $ LocalBranch "temp_branch" -}
-
-
-  {- branches <- listAllBranches -}
-  {- putStr $ "all branches: " ++ (show branches) -}
-
-  {- checkout originalBranch -}
-  {- destroyBranch branch -}
-
-    {- where -}
-
-      {- currentBranch :: IO Branch -}
-      {- currentBranch = (head . parsedBranches) <$> git ["rev-parse", "--abbrev-ref", "HEAD"] -}
-      
-      {- createBranch :: Branch -> IO Branch -}
-      {- createBranch branch@(LocalBranch name) = do -}
-        {- git ["checkout", "-b", name] -}
-        {- return branch -}
-
-      {- destroyBranch :: Branch -> IO () -}
-      {- destroyBranch (LocalBranch name) = do -}
-        {- git ["branch", "-D", name] -}
-        {- return () -}
-
-      {- listAllBranches :: IO ([Branch]) -}
-      {- listAllBranches = parsedBranches <$> git ["branch", "-a"] -}
-
-      {- checkout :: Branch -> IO String -}
-      {- checkout (LocalBranch name) = git ["checkout", name] -}
-
-      {- git :: [String] -> IO String -}
-      {- git args = readProcess "git" args "" -}
-
-
-      {- parsedBranches :: String -> [Branch] -}
-      {- parsedBranches s = case parse parseBranches "" s of -}
-        {- Right branches -> branches -}
-        {- Left err -> [] -}
-
-{- [> parseTs = many1 $ parseT <] -}
-
-{- [> parseT = do <] -}
-  {- [> t <- manyTill (noneOf "\n") $ eol <] -}
-  {- [> return t <] -}
-
-        {- where -}
-          {- parseBranches :: Parser [Branch] -}
-          {- parseBranches = many1 $ (try activeLocalBranch) -}
-                                    {- <|> (try remoteBranch) -}
-                                    {- <|> localBranch -}
-
-          {- activeLocalBranch :: Parser Branch -}
-          {- activeLocalBranch = do -}
-            {- char '*' -}
-            {- spaces -}
-            {- branchName <- manyTill (noneOf "\n") eol -}
-            {- return $ LocalBranch branchName -}
-
-          {- remoteBranch = do -}
-            {- spaces -}
-            {- string "remotes/" -}
-            {- originName <- manyTill (noneOf "/") $ char '/' -}
-            {- branchName <- manyTill (noneOf "\n") $ eol -}
-            {- return $ RemoteBranch branchName originName -}
-
-          {- localBranch = do -}
-            {- spaces -}
-            {- branchName <- manyTill (noneOf "\n") $ eol -}
-            {- return $ LocalBranch branchName -}
-
-          {- eol = char '\n' -}
-
+    git :: [String] -> EIO String
+    git args = do
+      result <- liftIO $ readProcessWithExitCode "git" args ""
+      case result of
+        (ExitSuccess, result, _)  -> return result
+        (ExitFailure _, _, err)   -> fail $ "git error: " ++ err
 

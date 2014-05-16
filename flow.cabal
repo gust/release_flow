@@ -41,6 +41,8 @@ executable flow
     -- , strict
     , parsec
     , either
+    , mtl
+    , transformers
     -- , regex-posix
 
 test-suite Tasty

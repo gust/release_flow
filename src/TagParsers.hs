@@ -13,7 +13,7 @@ import Text.ParserCombinators.Parsec
 import Types.Types
 
 tagsParser :: Parser [Tag]
-tagsParser = catMaybes <$> (many $ releaseTagParser <|> ciTagParser <|> crapParser)
+tagsParser = catMaybes <$> (many $ (try releaseTagParser) <|> ciTagParser <|> crapParser)
 
 releaseTagParser :: Parser (Maybe Tag)
 releaseTagParser = do
@@ -49,4 +49,5 @@ crapParser = tillEol >> return Nothing
 
 tillEol = manyTill (noneOf "\n") eol
 eol = char '\n'
+
 
