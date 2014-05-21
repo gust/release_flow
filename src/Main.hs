@@ -5,7 +5,9 @@ module Main where
 import Control.Applicative ((<$>))
 import System.Process (readProcessWithExitCode)
 import System.Exit (ExitCode(..))
+
 import Text.ParserCombinators.Parsec
+
 import System.Environment (getArgs)
 import Data.List (intercalate, sortBy)
 import Data.Maybe (listToMaybe)
@@ -14,7 +16,7 @@ import Control.Monad.Trans.Writer.Strict
 import Control.Monad.IO.Class (liftIO)
 
 import Types.Types
-import TagParsers (tagsParser)
+import TagParsers (parsedTags)
 
 type EIO =  (ErrorT String (WriterT String IO))
 
@@ -98,14 +100,6 @@ main = do
     ciTag :: Tag -> Bool
     ciTag (CiTag _) = True
     ciTag _ = False
-
-    parsedTags :: String -> Either String [Tag]
-    parsedTags = 
-      convertToStringError . parse tagsParser ""
-      where
-        convertToStringError :: Either ParseError a -> Either String a
-        convertToStringError (Left parseError) = Left $ show parseError
-        convertToStringError (Right x) = Right x
 
     git :: [String] -> EIO String
     git args = do

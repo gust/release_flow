@@ -3,7 +3,7 @@ import Test.Tasty.SmallCheck as SC
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
-import Unit.Parsers.Tags (addressUnitTests)
+import Unit.Parsers.Tags (tagsParsersUnitTests)
 
 main = defaultMain tests
   where
@@ -39,6 +39,6 @@ main = defaultMain tests
       where
         allTests = testGroup "Tasty Tests" [unitTests]
           where
-            unitTests = testGroup "HUnit Tests" $ concat [tagsParserUnitTests]
+            unitTests = testGroup "HUnit Tests" $ concat [tagsParsersUnitTests]
 
 

@@ -2,15 +2,26 @@
 
 module TagParsers 
   (
-    tagsParser
+    parsedTags
   )
   where
 
 import Control.Applicative ((<$>), (<*>), (<*))
 import Data.Maybe (catMaybes)
 import Text.ParserCombinators.Parsec
+import Data.List (intercalate)
+import Text.ParserCombinators.Parsec.Error
 
 import Types.Types
+
+
+parsedTags :: String -> Either String [Tag]
+parsedTags = 
+  convertToStringError . parse tagsParser ""
+  where
+    convertToStringError :: Either ParseError a -> Either String a
+    convertToStringError (Left parseError) = Left $ intercalate ", " $ map messageString $ errorMessages parseError
+    convertToStringError (Right x) = Right x
 
 tagsParser :: Parser [Tag]
 tagsParser = catMaybes <$> (many $ (try releaseTagParser) <|> ciTagParser <|> crapParser)

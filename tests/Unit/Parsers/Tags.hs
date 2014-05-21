@@ -5,12 +5,12 @@ import Test.Tasty.HUnit
 import Text.ParserCombinators.Parsec (parse)
 
 import Types.Types
-import TagParsers (tagsParser)
+import TagParsers (parsedTags)
 
 tagsParsersUnitTests :: [TestTree]
 tagsParsersUnitTests = map (\(s, eitherTags, failString) ->
   testCase failString $
-  parse tagsParser "" s @?= eitherTags) allTestCases
+  parsedTags s @?= eitherTags) allTestCases
     where
 
       allTestCases = concat [
@@ -18,5 +18,5 @@ tagsParsersUnitTests = map (\(s, eitherTags, failString) ->
         ]
 
       simpleTestCases = [
-          ("release/1.2.3",       Right [ReleaseTag $ SemVer 1 2 3],                "single release tag")
+          ("release/1.2.3\n",       Right [ReleaseTag $ SemVer 1 2 3],                "single release tag")
         ]
