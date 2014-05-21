@@ -34,13 +34,6 @@ semVerParser = SemVer <$> intParser <* (char '.')
                       <*> intParser <* (char '.') 
                       <*> intParser
 
-  {- major <- intParser -}
-  {- char '.' -}
-  {- minor <- intParser -}
-  {- char '.' -}
-  {- patch <- intParser -}
-  {- return $ SemVer major minor patch -}
-
 intParser :: Parser Int
 intParser = read <$> many1 digit
 
