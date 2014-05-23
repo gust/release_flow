@@ -12,6 +12,7 @@ import System.Environment (getArgs)
 import Data.List (intercalate, sortBy)
 import Data.Maybe (listToMaybe)
 import Control.Monad.Trans.Either (EitherT, runEitherT, hoistEither)
+import Control.Error (throwT)
 import Control.Monad.Trans.Writer.Strict
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Class (lift)
@@ -45,62 +46,78 @@ main = do
       (releaseNickname:_) <- liftIO getArgs
 
       fetchTags
-      lift $ tell "Fetched tags\n"
+      log "Fetched tags"
 
       cutReleaseBranch releaseNickname
-      lift $ tell $ "Cut release branch, " ++ releaseNickname ++ "\n"
+      log $ "Cut release branch, " ++ releaseNickname
 
-      tagReleaseCandidate
+      releaseCandidateTag <- tagReleaseCandidate
       git ["push", "origin", releaseNickname, "--tags"]
-      return ()
+
+      log "Deploying to preproduction"
+      deployTag releaseCandidateTag
 
 
-    tagReleaseCandidate :: EIO ()
-    tagReleaseCandidate = do
-      tagString <- git ["tag"]
-      tag <- hoistEither $ getNextReleaseCandidateTag =<< getLatestTag releaseTag tagString
-      git ["tag", show tag]
-      return ()
+      log $ "Release candidate " ++ show(releaseCandidateTag) ++ "/" ++ releaseNickname ++ " has been deployed. Evaluate this release on http://preprod.gust.com."
+
+      return()
 
 
-    cutReleaseBranch :: String -> EIO ()
-    cutReleaseBranch releaseNickname = do
-      eitherTag <- fmap (getLatestTag ciTag) $ git ["tag"]
-      tag <- case eitherTag of
-        Right tag -> return tag
-        Left err -> fail err
-      git ["checkout", "-b", releaseNickname, (show tag)]
-      return ()
-
-    fetchTags :: EIO ()
-    fetchTags = git ["fetch", "--tags"] >> return ()
-
-    getLatestTag :: (Tag -> Bool) -> String -> Either String Tag
-    getLatestTag tagsFilter tagString = (head . reverseSort . filter tagsFilter) <$> parsedTags tagString
-
-    -- TODO: don't actually need Either here
-    getNextReleaseCandidateTag :: Tag -> Either String Tag
-    getNextReleaseCandidateTag tag =
-      return $ ReleaseCandidateTag nextRelease 1
       where
-        latestRelease = version tag
-        nextRelease = nextMinorVersion latestRelease
+        log message = lift $ tell $ message ++ "\n"
 
-        nextMinorVersion :: Version -> Version
-        nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) patch
+        deployTag :: Tag -> EIO String
+        deployTag tag = do
+          executeExternal "DEPLOY_MIGRATIONS=true rake" ["preproduction", "deploy:force[" ++ show(tag) ++ "]"]
 
-    releaseTag :: Tag -> Bool
-    releaseTag (ReleaseTag _) = True
-    releaseTag _ = False
+        tagReleaseCandidate :: EIO Tag
+        tagReleaseCandidate = do
+          tagString <- git ["tag"]
+          tag <- hoistEither $ getNextReleaseCandidateTag <$> getLatestTag releaseTag tagString
+          git ["tag", show tag]
+          return tag
 
-    ciTag :: Tag -> Bool
-    ciTag (CiTag _) = True
-    ciTag _ = False
 
-    git :: [String] -> EIO String
-    git args = do
-      result <- liftIO $ readProcessWithExitCode "git" args ""
-      case result of
-        (ExitSuccess, result, _)  -> return result
-        (ExitFailure _, _, err)   -> fail $ "git error: " ++ err
+        cutReleaseBranch :: String -> EIO ()
+        cutReleaseBranch releaseNickname = do
+          tag <- hoistEither =<< getLatestTag ciTag <$> (git ["tag"])
+          git ["checkout", "-b", releaseNickname, (show tag)]
+          return ()
+
+        fetchTags :: EIO ()
+        fetchTags = git ["fetch", "--tags"] >> return ()
+
+        getLatestTag :: (Tag -> Bool) -> String -> Either String Tag
+        getLatestTag tagsFilter tagString = (head . reverseSort . filter tagsFilter) <$> parsedTags tagString
+
+        getNextReleaseCandidateTag :: Tag -> Tag
+        getNextReleaseCandidateTag tag =
+          ReleaseCandidateTag nextRelease 1
+          where
+            latestRelease = version tag
+            nextRelease = nextMinorVersion latestRelease
+
+            nextMinorVersion :: Version -> Version
+            nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) patch
+
+        releaseTag :: Tag -> Bool
+        releaseTag (ReleaseTag _) = True
+        releaseTag _ = False
+
+        ciTag :: Tag -> Bool
+        ciTag (CiTag _) = True
+        ciTag _ = False
+
+        git :: [String] -> EIO String
+        git args = do
+          executeExternal "git" args
+
+
+        executeExternal :: String -> [String] -> EIO String
+        executeExternal cmd args = do
+          result <- liftIO $ readProcessWithExitCode cmd args ""
+          case result of
+            (ExitSuccess, stdout, _)  -> return stdout
+            (ExitFailure _, _, err)   -> fail $ "Error: " ++ err
+
 

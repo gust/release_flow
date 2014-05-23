@@ -43,6 +43,7 @@ executable flow
     , either
     , mtl
     , transformers
+    , errors
     -- , regex-posix
 
 
@@ -56,7 +57,7 @@ test-suite Tasty
   type:             exitcode-stdio-1.0
   hs-source-dirs:   tests, src
   main-is:          Tasty.hs
-  build-depends:    
+  build-depends:
       base >= 4
     , tasty
     , tasty-hunit
