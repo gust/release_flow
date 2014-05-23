@@ -11,14 +11,16 @@ import Text.ParserCombinators.Parsec
 import System.Environment (getArgs)
 import Data.List (intercalate, sortBy)
 import Data.Maybe (listToMaybe)
-import Control.Monad.Error
+import Control.Monad.Trans.Either (EitherT, runEitherT, hoistEither)
 import Control.Monad.Trans.Writer.Strict
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Class (lift)
+
 
 import Types.Types
 import TagParsers (parsedTags)
 
-type EIO =  (ErrorT String (WriterT String IO))
+type EIO =  (EitherT String (WriterT String IO))
 
 reverseSort :: Ord a => [a] -> [a]
 reverseSort = sortBy $ flip compare
@@ -29,10 +31,9 @@ main = do
   putStr $ "Log: " ++ log
 
   where
-
     runStuff :: WriterT String IO ()
     runStuff = do
-      eitherResult <- runErrorT release
+      eitherResult <- runEitherT release
       case eitherResult of
         Right result -> return ()
         Left err -> do
@@ -45,8 +46,10 @@ main = do
 
       fetchTags
       lift $ tell "Fetched tags\n"
+
       cutReleaseBranch releaseNickname
       lift $ tell $ "Cut release branch, " ++ releaseNickname ++ "\n"
+
       tagReleaseCandidate
       git ["push", "origin", releaseNickname, "--tags"]
       return ()
@@ -55,18 +58,14 @@ main = do
     tagReleaseCandidate :: EIO ()
     tagReleaseCandidate = do
       tagString <- git ["tag"]
-      tag <- hoistEIO $ getNextReleaseCandidateTag =<< getLatestReleaseTag tagString
+      tag <- hoistEither $ getNextReleaseCandidateTag =<< getLatestTag releaseTag tagString
       git ["tag", show tag]
       return ()
-      where
-        hoistEIO :: Either String Tag -> EIO Tag
-        hoistEIO eitherTag = case eitherTag of
-          Right tag -> return tag
-          Left err -> fail err
+
 
     cutReleaseBranch :: String -> EIO ()
     cutReleaseBranch releaseNickname = do
-      eitherTag <- fmap getLatestGreenTag $ git ["tag"]
+      eitherTag <- fmap (getLatestTag ciTag) $ git ["tag"]
       tag <- case eitherTag of
         Right tag -> return tag
         Left err -> fail err
@@ -76,11 +75,8 @@ main = do
     fetchTags :: EIO ()
     fetchTags = git ["fetch", "--tags"] >> return ()
 
-    getLatestGreenTag :: String -> Either String Tag
-    getLatestGreenTag tagString = (head . reverseSort . filter ciTag) <$> parsedTags tagString
-
-    getLatestReleaseTag :: String -> Either String Tag
-    getLatestReleaseTag tagString = (head . reverseSort . filter releaseTag) <$> parsedTags tagString
+    getLatestTag :: (Tag -> Bool) -> String -> Either String Tag
+    getLatestTag tagsFilter tagString = (head . reverseSort . filter tagsFilter) <$> parsedTags tagString
 
     -- TODO: don't actually need Either here
     getNextReleaseCandidateTag :: Tag -> Either String Tag
