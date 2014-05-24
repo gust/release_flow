@@ -1,8 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Types.Types where
+module Types where
 
 import Data.List (intercalate)
+import Control.Monad.Trans.Either (EitherT)
+import Control.Monad.Trans.Writer.Strict (WriterT)
+
+type EIO =  (EitherT String (WriterT String IO))
 
 releaseTagPrefix = "release/"
 ciTagPrefix = "ci/"
@@ -42,13 +46,22 @@ data Tag = ReleaseTag {
   } deriving (Eq)
 
 instance Show Tag where
-  show tag@(ReleaseTag version)              = prefix(tag) ++ (show version)
-  show tag@(CiTag version)                   = prefix(tag) ++ (show version)
-  show tag@(ReleaseCandidateTag version rc)  = prefix(tag) ++ (show version) ++ "-rc" ++ (show rc)
+  show tag@(ReleaseTag ver)              = prefix(tag) ++ (show ver)
+  show tag@(CiTag ver)                   = prefix(tag) ++ (show ver)
+  show tag@(ReleaseCandidateTag ver rc)  = prefix(tag) ++ (show ver) ++ "-rc" ++ (show rc)
 
 instance Ord Tag where
   compare (ReleaseTag a) (ReleaseTag b) = a `compare` b
   compare (CiTag a) (CiTag b) = a `compare` b
   compare _ _ = error "no comparison"
+
+data Branch = Branch {branchName :: String}
+instance Show Branch where
+  show = branchName
+
+data Environment = Preproduction | Production
+instance Show Environment where
+  show Preproduction  = "preproduction"
+  show Production     = "production"
 
 

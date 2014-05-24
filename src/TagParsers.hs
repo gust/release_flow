@@ -12,7 +12,7 @@ import Text.ParserCombinators.Parsec
 import Data.List (intercalate)
 import Text.ParserCombinators.Parsec.Error
 
-import Types.Types
+import Types
 
 
 parsedTags :: String -> Either String [Tag]
