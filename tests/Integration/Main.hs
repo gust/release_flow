@@ -1,15 +1,18 @@
-module Integration.Main where
+module Integration.Main (fakeWorldIntegrationTests) where
 
-import Test.Tasty
-import Test.Tasty.HUnit
-import Text.ParserCombinators.Parsec (parse)
+import Test.Tasty (TestTree)
+import Test.Tasty.HUnit (testCase, (@?=))
 
-import Types.Types
-import Control.Monad.State
-import TestInterpreter (interpret, EWP)
+import Control.Monad.State (State, runState, get, put)
+import Control.Monad.Trans.Either (EitherT, runEitherT)
+import Data.List (intercalate)
 
-integrationTests :: [TestTree]
-integrationTests = [fakeWorld]
+import Types
+import Interpreter.State (interpret, defaultWorld, World(..))
+import Program.Release (program)
+
+fakeWorldIntegrationTests :: [TestTree]
+fakeWorldIntegrationTests = [fakeWorld]
 
 fakeWorld = testCase "testing with a fake world" $
  run startWorld @?= expectedEndWorld
@@ -21,15 +24,23 @@ fakeWorld = testCase "testing with a fake world" $
           ]
       }
 
-    endWorld = defaultWorld {
-        wTags = [
+    expectedEndWorld = defaultWorld {
+        wCurrentDeployment = Just $ ReleaseCandidateTag (SemVer 1 3 3) 1
+      , wTags = [
             ReleaseTag $ SemVer 1 2 3
           , CiTag $ SemVer 1 1 1
           ]
+
+      , wBranches = [("bananas","ci/1.1.1")]
+      , wLog = [
+          "Cut release branch, bananas"
+        , "Deployed to preproduction"
+        , "Release candidate release/1.3.3-rc1/bananas has been deployed. Evaluate this release on http://preprod.gust.com."
+        ]
       }
 
-    run :: EitherT String State World ()
-    run = endWorld
+    run :: World -> World
+    run startWorld = endWorld
       where 
         ((), endWorld) = runState stateInterpretation startWorld
           where
@@ -38,15 +49,13 @@ fakeWorld = testCase "testing with a fake world" $
               eitherResult <- runEitherT $ interpret program
               case eitherResult of
                 Right messages -> do
-                  logError $ "Log: " ++ messages
-                  return ()
+                  logMessages messages
                 Left err -> do
-                  logError $ "Error: " ++ err
-                  return ()
+                  logMessages [err]
 
               where
-                logError :: String -> State World ()
-                logError e = do
+                logMessages :: [String] -> State World ()
+                logMessages e = do
                   w <- get
-                  put w{wErrors = e:(wErrors w)}
+                  put w{wLog = e ++ (wLog w)}
 

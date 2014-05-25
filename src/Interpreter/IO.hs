@@ -1,5 +1,5 @@
-module Interpreter
-  (interpret, EIO)
+module Interpreter.IO
+  (interpret)
 where
 
 import Control.Monad.Trans.Either (EitherT, hoistEither)
@@ -12,8 +12,8 @@ import System.Exit (ExitCode(..), exitSuccess)
 import Control.Monad.Free (Free(..))
 
 import Types (Tag, Branch(..), Environment(..))
-import Commands -- (Program)
-import TagParsers (parsedTags)
+import Interpreter.Commands (Program, Interaction(..))
+import Parser.Tag (parsedTags)
 
 type EIO = EitherT String IO
 

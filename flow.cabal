@@ -22,31 +22,13 @@ executable flow
   ghc-options:    -Wall
   build-depends:
       base >= 4 && <= 5
-    -- , bytestring
-    -- , mtl
-    -- , stm
-    -- , directory
-    -- , containers
-    -- , HTTP
-    -- , network
-    -- , aeson
-    -- , time
-    -- , curl
-    -- , xml
-    -- , vector
-    -- , text
-    -- , transformers
-    -- , xml2json
     , process
-    -- , strict
     , parsec
     , either
     , mtl
     , transformers
     , errors
     , free
-    , mtl
-    -- , regex-posix
 
 
 -- to run:
@@ -67,4 +49,9 @@ test-suite Tasty
     , tasty-smallcheck
     , parsec
     , split
+    , either
+    , transformers
+    , errors
+    , free
+    , mtl
 

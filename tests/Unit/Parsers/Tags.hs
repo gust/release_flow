@@ -4,8 +4,8 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Text.ParserCombinators.Parsec (parse)
 
-import Types.Types
-import TagParsers (parsedTags)
+import Types
+import Parser.Tag (parsedTags)
 
 tagsParsersUnitTests :: [TestTree]
 tagsParsersUnitTests = map (\(s, eitherTags, failString) ->

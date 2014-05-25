@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module TagParsers 
+module Parser.Tag
   (
     parsedTags
   )

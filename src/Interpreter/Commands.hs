@@ -1,6 +1,15 @@
 {-# LANGUAGE DeriveFunctor #-}
 
-module Commands where
+module Interpreter.Commands (
+    Interaction(..)
+  , Program
+  , EWP
+  , deployTag
+  , gitTags
+  , gitCheckoutNewBranchFromTag
+  , gitPushTags
+  , gitTag
+  ) where
 
 import Control.Monad.Free
 import Control.Monad.Trans.Class (lift)
@@ -8,7 +17,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Either (EitherT)
 import Control.Monad.Trans.Writer.Strict (WriterT)
 
-import Types
+import Types (Tag(..), Branch(..), Environment)
 
 
 data Interaction x
@@ -21,7 +30,7 @@ data Interaction x
 
 type Program = Free Interaction
 
-type EWP =  EitherT String (WriterT String Program)
+type EWP =  EitherT String (WriterT [String] Program)
 
 deployTag :: Tag -> Environment -> EWP ()
 deployTag tag env = lift $ liftF $ DeployTag tag env ()

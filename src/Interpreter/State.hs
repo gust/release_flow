@@ -1,5 +1,9 @@
-module TestInterpreter
-  (interpret, ES, defaultWorld, World(..))
+module Interpreter.State (
+    interpret
+    , ES
+    , defaultWorld
+    , World(..)
+    )
 where
 
 import Control.Monad.Trans.Either (EitherT, hoistEither)
@@ -7,25 +11,25 @@ import Control.Error (throwT)
 import Control.Monad.Trans.Class (lift)
 
 import Control.Monad.Free (Free(..))
-import Control.Monad.State
+import Control.Monad.State (State, runState, get, put)
 
 import Types (Tag, Branch(..), Environment(..))
-import Commands -- (Program)
-import TagParsers (parsedTags)
+import Interpreter.Commands (Program, Interaction(..))
+import Parser.Tag (parsedTags)
 
 
 data World = World {
     wCurrentDeployment  :: Maybe Tag
   , wTags               :: [Tag]
   , wBranches           :: [(String, String)]
-  , wErrors             :: [String]
-  } deriving Show
+  , wLog                :: [String]
+  } deriving (Eq, Show)
 
 defaultWorld = World {
     wCurrentDeployment  = Nothing
   , wTags               = []
   , wBranches           = []
-  , wErrors             = []
+  , wLog                = []
   }
 
 
