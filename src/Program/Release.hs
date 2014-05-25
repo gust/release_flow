@@ -32,19 +32,17 @@ import Tags (
 program :: Program [String]
 program = do
   -- strip WriterT by returning its accumulated logs
-  ((), messages) <- runWriterT tellErrors
-  return messages
+  snd <$> runWriterT tellErrors
 
   where
     tellErrors :: WriterT [String] Program ()
     tellErrors = do
       -- strip EitherT by just shoving the error message (in case of error) into the underlying writer transformer
       eitherResult <- runEitherT release
-      case eitherResult of
-        Right _ -> return ()
-        Left err -> do
-          tell [err]
-          return ()
+      either
+        (tell . (:[]))
+        return
+        eitherResult
 
     release :: EWP ()
     release = do

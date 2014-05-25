@@ -74,8 +74,8 @@ testCases = [successful, failing]
 
 
 fakeWorldTestCase :: FakeWorldTestCase -> TestTree
-fakeWorldTestCase itc = testCase (testDescription itc) $
- run (startWorld itc) @?= endWorld itc
+fakeWorldTestCase tc = testCase (testDescription tc) $
+ run (startWorld tc) @?= endWorld tc
   where
     run :: World -> World
     run startWorld = endWorld
@@ -85,11 +85,7 @@ fakeWorldTestCase itc = testCase (testDescription itc) $
             stateInterpretation :: State World ()
             stateInterpretation = do
               eitherResult <- runEitherT $ interpret program
-              case eitherResult of
-                Right messages -> do
-                  logMessages messages
-                Left err -> do
-                  logMessages [err]
+              logMessages $ either (:[]) id eitherResult
 
               where
                 logMessages :: [String] -> State World ()
