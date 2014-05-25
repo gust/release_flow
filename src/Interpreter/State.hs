@@ -53,7 +53,6 @@ interpret (Free x) = case x of
     getReleaseBranch = do -- Branch . head <$> lift getArgs
       w <- get
       return $ Branch $ wReleaseBranchName w
-      
 
     deployTag :: Tag -> Environment -> ES ()
     deployTag tag env = do -- executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()

@@ -6,11 +6,27 @@ module Parser.Tag
   )
   where
 
-import Control.Applicative ((<$>), (<*>), (<*))
+import Control.Applicative (
+    (<$>)
+  , (<*>)
+  , (<*)
+  )
 import Data.Maybe (catMaybes)
-import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec (
+    Parser
+  , parse
+  , (<|>)
+  , try
+  , string
+  , char
+  , many
+  , many1
+  , digit
+  , manyTill
+  , noneOf
+  )
 import Data.List (intercalate)
-import Text.ParserCombinators.Parsec.Error
+import Text.ParserCombinators.Parsec.Error (ParseError, messageString, errorMessages)
 
 import Types
 
@@ -24,7 +40,20 @@ parsedTags =
     convertToStringError (Right x) = Right x
 
 tagsParser :: Parser [Tag]
-tagsParser = catMaybes <$> (many $ (try releaseTagParser) <|> ciTagParser <|> crapParser)
+tagsParser = catMaybes <$> (many $ 
+      (try releaseCandidateTagParser) 
+  <|> (try releaseTagParser) 
+  <|> ciTagParser 
+  <|> crapParser)
+
+
+releaseCandidateTagParser :: Parser (Maybe Tag)
+releaseCandidateTagParser = do
+  string releaseTagPrefix
+  tag <- ReleaseCandidateTag <$> semVerParser <*> releaseCandidateParser
+  eol
+  return $ Just tag
+
 
 releaseTagParser :: Parser (Maybe Tag)
 releaseTagParser = do
@@ -41,9 +70,14 @@ ciTagParser = do
   return $ Just tag
 
 semVerParser :: Parser Version
-semVerParser = SemVer <$> intParser <* (char '.') 
-                      <*> intParser <* (char '.') 
+semVerParser = SemVer <$> intParser <* (char '.')
+                      <*> intParser <* (char '.')
                       <*> intParser
+
+releaseCandidateParser :: Parser Int
+releaseCandidateParser = do
+  string "-rc"
+  intParser
 
 intParser :: Parser Int
 intParser = read <$> many1 digit

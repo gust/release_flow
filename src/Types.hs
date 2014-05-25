@@ -8,14 +8,14 @@ releaseTagPrefix = "release/"
 ciTagPrefix = "ci/"
 
 prefix :: Tag -> String
-prefix (ReleaseTag _)           = releaseTagPrefix
-prefix (CiTag _)                = ciTagPrefix
+prefix (ReleaseTag _)             = releaseTagPrefix
+prefix (CiTag _)                  = ciTagPrefix
 prefix (ReleaseCandidateTag _ _)  = releaseTagPrefix
 
 data Version = SemVer {
-    major :: Int
-  , minor :: Int
-  , patch :: Int
+    major     :: Int
+  , minor     :: Int
+  , patch     :: Int
   } | UnixTimeVer {
     timestamp :: Int
   } deriving (Eq)
