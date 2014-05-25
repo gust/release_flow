@@ -44,6 +44,8 @@ executable flow
     , mtl
     , transformers
     , errors
+    , free
+    , mtl
     -- , regex-posix
 
 

@@ -1,0 +1,55 @@
+module Interpreter
+  (interpret, EIO)
+where
+
+import Control.Monad.Trans.Either (EitherT, hoistEither)
+import Control.Error (throwT)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Class (lift)
+
+import System.Process (readProcessWithExitCode)
+import System.Exit (ExitCode(..), exitSuccess)
+import Control.Monad.Free (Free(..))
+
+import Types (Tag, Branch(..), Environment(..))
+import Commands (Program)
+import TagParsers (parsedTags)
+
+type EIO = EitherT String IO
+
+interpret :: Program a -> EIO a
+interpret (Pure r) = return r
+interpret (Free x) = case x of
+  DeployTag tag env x                       -> gitDeployTag tag env                   >> interpret x
+  GitTags f                                 -> gitTags                                >>= interpret . f
+  GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >> interpret x
+  GitPushTags remote branch x               -> gitPushTags remote branch              >> interpret x
+  GitTag tag x                              -> gitTag tag                             >> interpret x
+
+  where
+    gitDeployTag :: Tag -> Environment -> EIO ()
+    gitDeployTag tag env = executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
+
+    gitTags :: EIO [Tag]
+    gitTags = git ["fetch", "--tags"] >> git ["tag"] >>= hoistEither . parsedTags
+
+    gitCheckoutNewBranchFromTag :: Branch -> Tag -> EIO ()
+    gitCheckoutNewBranchFromTag (Branch name) tag = git ["checkout", "-b", name, (show tag)] >> return ()
+
+    gitPushTags :: String -> Branch -> EIO ()
+    gitPushTags remote branch = git ["push", remote, show branch, "--tags"] >> return ()
+
+    gitTag :: Tag -> EIO ()
+    gitTag tag = git ["tag", show tag] >> return ()
+
+
+    git :: [String] -> EIO String
+    git args = executeExternal "git" args
+
+    executeExternal :: String -> [String] -> EIO String
+    executeExternal cmd args = do
+      result <- liftIO $ readProcessWithExitCode cmd args ""
+      case result of
+        (ExitSuccess, stdout, _)  -> return stdout
+        (ExitFailure _, _, err)   -> throwT $ "Error: " ++ err
+

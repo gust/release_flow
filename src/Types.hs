@@ -3,10 +3,6 @@
 module Types where
 
 import Data.List (intercalate)
-import Control.Monad.Trans.Either (EitherT)
-import Control.Monad.Trans.Writer.Strict (WriterT)
-
-type EIO =  (EitherT String (WriterT String IO))
 
 releaseTagPrefix = "release/"
 ciTagPrefix = "ci/"
