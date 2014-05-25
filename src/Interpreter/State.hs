@@ -11,7 +11,7 @@ import Control.Error (throwT)
 import Control.Monad.Trans.Class (lift)
 
 import Control.Monad.Free (Free(..))
-import Control.Monad.State (State, runState, get, put)
+import Control.Monad.State.Strict (State, runState, get, put)
 
 import Types (Tag, Branch(..), Environment(..))
 import Interpreter.Commands (Program, Interaction(..))
@@ -57,7 +57,7 @@ interpret (Free x) = case x of
     deployTag :: Tag -> Environment -> ES ()
     deployTag tag env = do -- executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
       w <- get
-      put w{wCurrentDeployment = Just tag}
+      put $! w{wCurrentDeployment = Just tag}
 
     gitTags :: ES [Tag]
     gitTags = do -- git ["fetch", "--tags"] >> git ["tag"] >>= hoistEither . parsedTags
@@ -67,13 +67,15 @@ interpret (Free x) = case x of
     gitCheckoutNewBranchFromTag :: Branch -> Tag -> ES ()
     gitCheckoutNewBranchFromTag (Branch name) tag = do -- git ["checkout", "-b", name, (show tag)] >> return ()
       w <- get
-      put w{wBranches = (name, show tag):(wBranches w)}
+      put $! w{wBranches = (name, show tag):(wBranches w)}
 
     gitPushTags :: String -> Branch -> ES ()
     gitPushTags remote branch = do -- git ["push", remote, show branch, "--tags"] >> return ()
+      -- TODO
       return ()
 
     gitTag :: Tag -> ES ()
     gitTag tag = do -- git ["tag", show tag] >> return ()
+      -- TODO
       return ()
 

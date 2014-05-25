@@ -3,7 +3,7 @@ module Integration.Main (fakeWorldIntegrationTestCases) where
 import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (testCase, (@?=))
 
-import Control.Monad.State (State, runState, get, put)
+import Control.Monad.State.Strict (State, runState, get, put)
 import Control.Monad.Trans.Either (EitherT, runEitherT)
 import Data.List (intercalate)
 
