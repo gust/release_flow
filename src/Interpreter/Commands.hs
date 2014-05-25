@@ -4,6 +4,7 @@ module Interpreter.Commands (
     Interaction(..)
   , Program
   , EWP
+  , getReleaseBranch
   , deployTag
   , gitTags
   , gitCheckoutNewBranchFromTag
@@ -21,7 +22,8 @@ import Types (Tag(..), Branch(..), Environment)
 
 
 data Interaction x
-  = DeployTag Tag Environment x
+  = GetReleaseBranch (Branch -> x)
+  | DeployTag Tag Environment x
   | GitTags ([Tag] -> x)
   | GitCheckoutNewBranchFromTag Branch Tag x
   | GitPushTags String Branch x
@@ -31,6 +33,9 @@ data Interaction x
 type Program = Free Interaction
 
 type EWP =  EitherT String (WriterT [String] Program)
+
+getReleaseBranch :: EWP Branch
+getReleaseBranch = lift $ liftF $ GetReleaseBranch id
 
 deployTag :: Tag -> Environment -> EWP ()
 deployTag tag env = lift $ liftF $ DeployTag tag env ()

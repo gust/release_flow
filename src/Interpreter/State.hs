@@ -19,14 +19,16 @@ import Parser.Tag (parsedTags)
 
 
 data World = World {
-    wCurrentDeployment  :: Maybe Tag
+    wReleaseBranchName  :: String
+  , wCurrentDeployment  :: Maybe Tag
   , wTags               :: [Tag]
   , wBranches           :: [(String, String)]
   , wLog                :: [String]
   } deriving (Eq, Show)
 
 defaultWorld = World {
-    wCurrentDeployment  = Nothing
+    wReleaseBranchName  = "bananas"
+  , wCurrentDeployment  = Nothing
   , wTags               = []
   , wBranches           = []
   , wLog                = []
@@ -38,13 +40,21 @@ type ES = EitherT String (State World)
 interpret :: Program a -> ES a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
-  DeployTag tag env x                       -> deployTag tag env                      >> interpret x
+  GetReleaseBranch f                        -> getReleaseBranch                       >>= interpret . f
+  DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
-  GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >> interpret x
-  GitPushTags remote branch x               -> gitPushTags remote branch              >> interpret x
-  GitTag tag x                              -> gitTag tag                             >> interpret x
+  GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
+  GitPushTags remote branch x               -> gitPushTags remote branch              >>  interpret x
+  GitTag tag x                              -> gitTag tag                             >>  interpret x
 
   where
+
+    getReleaseBranch :: ES Branch
+    getReleaseBranch = do -- Branch . head <$> lift getArgs
+      w <- get
+      return $ Branch $ wReleaseBranchName w
+      
+
     deployTag :: Tag -> Environment -> ES ()
     deployTag tag env = do -- executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
       w <- get

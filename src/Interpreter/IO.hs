@@ -2,11 +2,13 @@ module Interpreter.IO
   (interpret)
 where
 
+import Control.Applicative ((<$>))
 import Control.Monad.Trans.Either (EitherT, hoistEither)
 import Control.Error (throwT)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Class (lift)
 
+import System.Environment (getArgs)
 import System.Process (readProcessWithExitCode)
 import System.Exit (ExitCode(..), exitSuccess)
 import Control.Monad.Free (Free(..))
@@ -20,13 +22,17 @@ type EIO = EitherT String IO
 interpret :: Program a -> EitherT String IO a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
-  DeployTag tag env x                       -> deployTag tag env                      >> interpret x
+  GetReleaseBranch f                        -> getReleaseBranch                       >>= interpret . f
+  DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
-  GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >> interpret x
-  GitPushTags remote branch x               -> gitPushTags remote branch              >> interpret x
-  GitTag tag x                              -> gitTag tag                             >> interpret x
+  GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
+  GitPushTags remote branch x               -> gitPushTags remote branch              >>  interpret x
+  GitTag tag x                              -> gitTag tag                             >>  interpret x
 
   where
+    getReleaseBranch :: EIO Branch
+    getReleaseBranch = Branch . head <$> lift getArgs
+
     deployTag :: Tag -> Environment -> EIO ()
     deployTag tag env = executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
 

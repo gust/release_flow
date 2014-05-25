@@ -15,6 +15,7 @@ import Types (
 import Interpreter.Commands (
     Program
   , EWP
+  , getReleaseBranch
   , deployTag
   , gitTags
   , gitCheckoutNewBranchFromTag
@@ -46,10 +47,7 @@ program = do
 
     release :: EWP ()
     release = do
-      -- TODO: create a command for this
-      {- releaseBranch <- Branch . head <$> liftIO getArgs -}
-      let releaseBranch = Branch "bananas"
-
+      releaseBranch <- getReleaseBranch
       cutReleaseBranch releaseBranch
       msg $ "Cut release branch, " ++ show releaseBranch
 

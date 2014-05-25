@@ -27,23 +27,25 @@ testCases = [successful, failing]
     successful = FakeWorldTestCase {
         testDescription = "successful release"
       , startWorld = defaultWorld {
-          wTags = [
+            wReleaseBranchName = "apples"
+          , wTags = [
               ReleaseTag $ SemVer 1 2 3
             , CiTag $ SemVer 1 1 1
             ]
           }
       , endWorld = defaultWorld {
-            wCurrentDeployment = Just $ ReleaseCandidateTag (SemVer 1 3 3) 1
+            wReleaseBranchName = "apples"
+          , wCurrentDeployment = Just $ ReleaseCandidateTag (SemVer 1 3 3) 1
           , wTags = [
                 ReleaseTag $ SemVer 1 2 3
               , CiTag $ SemVer 1 1 1
               ]
 
-          , wBranches = [("bananas","ci/1.1.1")]
+          , wBranches = [("apples","ci/1.1.1")]
           , wLog = [
-              "Cut release branch, bananas"
+              "Cut release branch, apples"
             , "Deployed to preproduction"
-            , "Release candidate release/1.3.3-rc1/bananas has been deployed. Evaluate this release on http://preprod.gust.com."
+            , "Release candidate release/1.3.3-rc1/apples has been deployed. Evaluate this release on http://preprod.gust.com."
             ]
           }
 
