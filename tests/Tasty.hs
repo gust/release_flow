@@ -1,11 +1,9 @@
-import Test.Tasty
-import Test.Tasty.SmallCheck as SC
-import Test.Tasty.QuickCheck as QC
-import Test.Tasty.HUnit
+{- import Test.Tasty.SmallCheck as SC -}
+{- import Test.Tasty.QuickCheck as QC -}
+import Test.Tasty (TestTree, defaultMain, testGroup)
 
 import Unit.Parsers.Tags (tagsParsersUnitTests)
-
-import Integration.Main (fakeWorldIntegrationTests)
+import Integration.Main (fakeWorldIntegrationTestCases)
 
 main = defaultMain tests
   where
@@ -42,6 +40,5 @@ main = defaultMain tests
         allTests = testGroup "Tasty Tests" [unitTests, integrationTests]
           where
             unitTests = testGroup "HUnit Tests" $ concat [tagsParsersUnitTests]
-            integrationTests = testGroup "Integration Tests" $ concat [fakeWorldIntegrationTests]
-
+            integrationTests = testGroup "Integration Tests" $ concat [fakeWorldIntegrationTestCases]
 

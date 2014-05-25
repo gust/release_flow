@@ -1,7 +1,7 @@
 module Unit.Parsers.Tags (tagsParsersUnitTests) where
 
-import Test.Tasty
-import Test.Tasty.HUnit
+import Test.Tasty (TestTree)
+import Test.Tasty.HUnit (testCase, (@?=))
 import Text.ParserCombinators.Parsec (parse)
 
 import Types
