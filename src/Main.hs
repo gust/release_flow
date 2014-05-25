@@ -4,34 +4,19 @@ module Main where
 
 import Control.Applicative ((<$>))
 import System.Environment (getArgs)
+import Control.Monad ((<=<))
 import Control.Monad.Trans.Either (hoistEither, runEitherT)
 import Control.Monad.Trans.Writer.Strict (WriterT, runWriterT, tell)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Class (lift)
 
-import Control.Monad.State
-
 import Types
 import Commands
-{- import Interpreter (interpret, EIO) -}
-import TestInterpreter
+import Interpreter (interpret, EIO)
 import Tags
-
 
 main :: IO ()
 main = do
-  let startWorld = defaultWorld {
-      wTags = [
-          ReleaseTag $ SemVer 1 2 3
-        , CiTag $ SemVer 1 1 1
-        ]
-    }
-
-  let ((), endWorld) = runState stateInterpretation startWorld
-  putStr $ "end world: " ++ show endWorld
-
-stateInterpretation :: State World ()
-stateInterpretation = do
   eitherResult <- runEitherT $ interpret program
   case eitherResult of
     Right messages -> do
@@ -42,10 +27,8 @@ stateInterpretation = do
       return ()
 
   where
-    logError :: String -> State World ()
-    logError e = do
-      w <- get
-      put w{wErrors = e:(wErrors w)}
+    logError :: String -> IO ()
+    logError = putStrLn
 
 
 program :: Program String

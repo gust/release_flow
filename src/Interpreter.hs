@@ -12,23 +12,23 @@ import System.Exit (ExitCode(..), exitSuccess)
 import Control.Monad.Free (Free(..))
 
 import Types (Tag, Branch(..), Environment(..))
-import Commands (Program)
+import Commands -- (Program)
 import TagParsers (parsedTags)
 
 type EIO = EitherT String IO
 
-interpret :: Program a -> EIO a
+interpret :: Program a -> EitherT String IO a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
-  DeployTag tag env x                       -> gitDeployTag tag env                   >> interpret x
+  DeployTag tag env x                       -> deployTag tag env                      >> interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
   GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >> interpret x
   GitPushTags remote branch x               -> gitPushTags remote branch              >> interpret x
   GitTag tag x                              -> gitTag tag                             >> interpret x
 
   where
-    gitDeployTag :: Tag -> Environment -> EIO ()
-    gitDeployTag tag env = executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
+    deployTag :: Tag -> Environment -> EIO ()
+    deployTag tag env = executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
 
     gitTags :: EIO [Tag]
     gitTags = git ["fetch", "--tags"] >> git ["tag"] >>= hoistEither . parsedTags

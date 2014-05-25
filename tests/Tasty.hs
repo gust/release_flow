@@ -5,6 +5,8 @@ import Test.Tasty.HUnit
 
 import Unit.Parsers.Tags (tagsParsersUnitTests)
 
+import Integration.Main (integrationTests)
+
 main = defaultMain tests
   where
     tests :: TestTree
@@ -37,7 +39,7 @@ main = defaultMain tests
       {- ] -}
 
       where
-        allTests = testGroup "Tasty Tests" [unitTests]
+        allTests = testGroup "Tasty Tests" [unitTests, integrationTests]
           where
             unitTests = testGroup "HUnit Tests" $ concat [tagsParsersUnitTests]
 
