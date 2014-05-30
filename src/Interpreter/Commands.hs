@@ -12,13 +12,14 @@ module Interpreter.Commands (
   , gitTag
   ) where
 
-import Control.Monad.Free
-import Control.Monad.Trans.Class (lift)
+import           Control.Monad.Free
+import           Control.Monad.Trans.Class         (lift)
 
-import Control.Monad.Trans.Either (EitherT)
-import Control.Monad.Trans.Writer.Strict (WriterT)
+import           Control.Monad.Trans.Either        (EitherT)
+import           Control.Monad.Trans.Writer.Strict (WriterT)
 
-import Types (Tag(..), Branch(..), Environment)
+import           Types                             (Branch (..), Environment,
+                                                    Tag (..))
 
 
 data Interaction x

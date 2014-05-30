@@ -6,33 +6,20 @@ module Parser.Tag
   )
   where
 
-import Control.Applicative (
-    (<$>)
-  , (<*>)
-  , (<*)
-  )
-import Data.Maybe (catMaybes)
-import Text.ParserCombinators.Parsec (
-    Parser
-  , parse
-  , (<|>)
-  , try
-  , string
-  , char
-  , many
-  , many1
-  , digit
-  , manyTill
-  , noneOf
-  )
-import Data.List (intercalate)
-import Text.ParserCombinators.Parsec.Error (ParseError, messageString, errorMessages)
+import           Control.Applicative                 ((<$>), (<*), (<*>))
+import           Data.List                           (intercalate)
+import           Data.Maybe                          (catMaybes)
+import           Text.ParserCombinators.Parsec       (Parser, char, digit, many,
+                                                      many1, manyTill, noneOf,
+                                                      parse, string, try, (<|>))
+import           Text.ParserCombinators.Parsec.Error (ParseError, errorMessages,
+                                                      messageString)
 
-import Types
+import           Types
 
 
 parsedTags :: String -> Either String [Tag]
-parsedTags = 
+parsedTags =
   convertToStringError . parse tagsParser ""
   where
     convertToStringError :: Either ParseError a -> Either String a
@@ -40,10 +27,10 @@ parsedTags =
     convertToStringError (Right x) = Right x
 
 tagsParser :: Parser [Tag]
-tagsParser = catMaybes <$> (many $ 
-      (try releaseCandidateTagParser) 
-  <|> (try releaseTagParser) 
-  <|> ciTagParser 
+tagsParser = catMaybes <$> (many $
+      (try releaseCandidateTagParser)
+  <|> (try releaseTagParser)
+  <|> ciTagParser
   <|> crapParser)
 
 

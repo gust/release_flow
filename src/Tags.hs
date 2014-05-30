@@ -1,9 +1,9 @@
 module Tags where
 
-import Data.List (sortBy)
-import Data.Maybe (listToMaybe)
+import           Data.List  (sortBy)
+import           Data.Maybe (listToMaybe)
 
-import Types
+import           Types
 
 getNextReleaseCandidateTag :: Tag -> Tag
 getNextReleaseCandidateTag tag =

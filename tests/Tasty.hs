@@ -1,9 +1,9 @@
 {- import Test.Tasty.SmallCheck as SC -}
 {- import Test.Tasty.QuickCheck as QC -}
-import Test.Tasty (TestTree, defaultMain, testGroup)
+import           Test.Tasty        (TestTree, defaultMain, testGroup)
 
-import Unit.Parsers.Tags (tagsParsersUnitTests)
-import Integration.Main (fakeWorldIntegrationTestCases)
+import           Integration.Main  (fakeWorldIntegrationTestCases)
+import           Unit.Parsers.Tags (tagsParsersUnitTests)
 
 main = defaultMain tests
   where

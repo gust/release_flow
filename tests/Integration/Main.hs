@@ -1,15 +1,16 @@
 module Integration.Main (fakeWorldIntegrationTestCases) where
 
-import Test.Tasty (TestTree)
-import Test.Tasty.HUnit (testCase, (@?=))
+import           Test.Tasty                 (TestTree)
+import           Test.Tasty.HUnit           (testCase, (@?=))
 
-import Control.Monad.State.Strict (State, runState, get, put)
-import Control.Monad.Trans.Either (EitherT, runEitherT)
-import Data.List (intercalate)
+import           Control.Monad.State.Strict (State, get, put, runState)
+import           Control.Monad.Trans.Either (EitherT, runEitherT)
+import           Data.List                  (intercalate)
 
-import Types (Tag(..), Version(..))
-import Interpreter.State (interpret, defaultWorld, World(..))
-import Program.Release (program)
+import           Interpreter.State          (World (..), defaultWorld,
+                                             interpret)
+import           Program.Release            (program)
+import           Types                      (Tag (..), Version (..))
 
 
 data FakeWorldTestCase = FakeWorldTestCase {
@@ -37,9 +38,9 @@ testCases = [successful, failing]
             wReleaseBranchName = "apples"
           , wCurrentDeployment = Just $ ReleaseCandidateTag (SemVer 1 3 3) 1
           , wTags = [
-                ReleaseTag $ SemVer 1 2 3
-              , CiTag $ SemVer 1 1 1
-              ]
+              ReleaseTag $ SemVer 1 2 3
+            , CiTag $ SemVer 1 1 1
+            ]
 
           , wBranches = [("apples","ci/1.1.1")]
           , wLog = [
@@ -54,9 +55,9 @@ testCases = [successful, failing]
     failing = FakeWorldTestCase {
         testDescription = "failing release"
       , startWorld = defaultWorld {
-          wTags = [
-              CiTag $ SemVer 1 1 1
-            ]
+            wTags = [
+                CiTag $ SemVer 1 1 1
+              ]
           }
       , endWorld = defaultWorld {
             wCurrentDeployment = Nothing
@@ -81,7 +82,7 @@ fakeWorldTestCase tc = testCase (testDescription tc) $
   where
     run :: World -> World
     run startWorld = endWorld
-      where 
+      where
         ((), endWorld) = runState stateInterpretation startWorld
           where
             stateInterpretation :: State World ()

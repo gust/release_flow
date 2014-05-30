@@ -6,24 +6,24 @@ module Interpreter.State (
     )
 where
 
-import Control.Monad.Trans.Either (EitherT, hoistEither)
-import Control.Error (throwT)
-import Control.Monad.Trans.Class (lift)
+import           Control.Error              (throwT)
+import           Control.Monad.Trans.Class  (lift)
+import           Control.Monad.Trans.Either (EitherT, hoistEither)
 
-import Control.Monad.Free (Free(..))
-import Control.Monad.State.Strict (State, runState, get, put)
+import           Control.Monad.Free         (Free (..))
+import           Control.Monad.State.Strict (State, get, put, runState)
 
-import Types (Tag, Branch(..), Environment(..))
-import Interpreter.Commands (Program, Interaction(..))
-import Parser.Tag (parsedTags)
+import           Interpreter.Commands       (Interaction (..), Program)
+import           Parser.Tag                 (parsedTags)
+import           Types                      (Branch (..), Environment (..), Tag)
 
 
 data World = World {
-    wReleaseBranchName  :: String
-  , wCurrentDeployment  :: Maybe Tag
-  , wTags               :: [Tag]
-  , wBranches           :: [(String, String)]
-  , wLog                :: [String]
+    wReleaseBranchName :: String
+  , wCurrentDeployment :: Maybe Tag
+  , wTags              :: [Tag]
+  , wBranches          :: [(String, String)]
+  , wLog               :: [String]
   } deriving (Eq, Show)
 
 defaultWorld = World {

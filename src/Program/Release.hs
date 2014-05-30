@@ -1,34 +1,24 @@
 module Program.Release (program) where
 
-import Control.Applicative ((<$>))
-import Control.Monad ((<=<))
-import Control.Monad.Trans.Either (hoistEither, runEitherT)
-import Control.Monad.Trans.Writer.Strict (WriterT, runWriterT, tell)
-import Control.Monad.Trans.Class (lift)
+import           Control.Applicative               ((<$>))
+import           Control.Monad                     ((<=<))
+import           Control.Monad.Trans.Class         (lift)
+import           Control.Monad.Trans.Either        (hoistEither, runEitherT)
+import           Control.Monad.Trans.Writer.Strict (WriterT, runWriterT, tell)
 
-import Types (
-    Tag(..)
-  , Branch(..)
-  , Environment(..)
-  )
+import           Types                             (Branch (..),
+                                                    Environment (..), Tag (..))
 
-import Interpreter.Commands (
-    Program
-  , EWP
-  , getReleaseBranch
-  , deployTag
-  , gitTags
-  , gitCheckoutNewBranchFromTag
-  , gitPushTags
-  , gitTag
-  )
+import           Interpreter.Commands              (EWP, Program, deployTag,
+                                                    getReleaseBranch,
+                                                    gitCheckoutNewBranchFromTag,
+                                                    gitPushTags, gitTag,
+                                                    gitTags)
 
-import Tags (
-    getNextReleaseCandidateTag
-  , latestFilteredTag
-  , releaseTagFilter
-  , ciTagFilter
-  )
+import           Tags                              (ciTagFilter,
+                                                    getNextReleaseCandidateTag,
+                                                    latestFilteredTag,
+                                                    releaseTagFilter)
 
 program :: Program [String]
 program = do

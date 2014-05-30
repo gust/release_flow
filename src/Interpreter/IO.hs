@@ -2,20 +2,20 @@ module Interpreter.IO
   (interpret)
 where
 
-import Control.Applicative ((<$>))
-import Control.Monad.Trans.Either (EitherT, hoistEither)
-import Control.Error (throwT)
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Class (lift)
+import           Control.Applicative        ((<$>))
+import           Control.Error              (throwT)
+import           Control.Monad.IO.Class     (liftIO)
+import           Control.Monad.Trans.Class  (lift)
+import           Control.Monad.Trans.Either (EitherT, hoistEither)
 
-import System.Environment (getArgs)
-import System.Process (readProcessWithExitCode)
-import System.Exit (ExitCode(..), exitSuccess)
-import Control.Monad.Free (Free(..))
+import           Control.Monad.Free         (Free (..))
+import           System.Environment         (getArgs)
+import           System.Exit                (ExitCode (..))
+import           System.Process             (readProcessWithExitCode)
 
-import Types (Tag, Branch(..), Environment(..))
-import Interpreter.Commands (Program, Interaction(..))
-import Parser.Tag (parsedTags)
+import           Interpreter.Commands       (Interaction (..), Program)
+import           Parser.Tag                 (parsedTags)
+import           Types                      (Branch (..), Environment (..), Tag)
 
 type EIO = EitherT String IO
 

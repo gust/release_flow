@@ -2,7 +2,7 @@
 
 module Types where
 
-import Data.List (intercalate)
+import           Data.List (intercalate)
 
 releaseTagPrefix = "release/"
 ciTagPrefix = "ci/"
@@ -13,9 +13,9 @@ prefix (CiTag _)                  = ciTagPrefix
 prefix (ReleaseCandidateTag _ _)  = releaseTagPrefix
 
 data Version = SemVer {
-    major     :: Int
-  , minor     :: Int
-  , patch     :: Int
+    major :: Int
+  , minor :: Int
+  , patch :: Int
   } | UnixTimeVer {
     timestamp :: Int
   } deriving (Eq)
@@ -31,14 +31,14 @@ instance Ord Version where
 
 
 data Tag = ReleaseTag {
-    version   :: Version
+    version :: Version
   } |
   ReleaseCandidateTag {
-    version   :: Version
-  , rc        :: Int
+    version :: Version
+  , rc      :: Int
   } |
   CiTag {
-    version   :: Version
+    version :: Version
   } deriving (Eq)
 
 instance Show Tag where
