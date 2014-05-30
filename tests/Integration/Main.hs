@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Integration.Main (fakeWorldIntegrationTestCases) where
 
 import           Test.Tasty                 (TestTree)
@@ -7,92 +9,96 @@ import           Control.Monad.State.Strict (State, get, put, runState)
 import           Control.Monad.Trans.Either (EitherT, runEitherT)
 import           Data.List                  (intercalate)
 
-import           Interpreter.State          (World (..), defaultWorld,
-                                             interpret)
+import           Interpreter.State          (World (..), defaultWorld, Input(..), defaultInput, Output(..), initialOutput, interpret)
 import           Program.Release            (program)
 import           Types                      (Tag (..), Version (..))
+import Control.Lens ((%=), (^.), makeLenses)
 
 
 data FakeWorldTestCase = FakeWorldTestCase {
-    testDescription :: String
-  , startWorld      :: World
-  , endWorld        :: World
+    _testDescription :: String
+  , _input           :: Input
+  , _expectedOutput  :: Output
   }
+
+makeLenses ''FakeWorldTestCase
+
+makeLenses ''Input
+makeLenses ''Output
+makeLenses ''World
+
+testCases :: [FakeWorldTestCase]
+testCases = [successful, noReleaseTag]
+  where
+    successful = FakeWorldTestCase {
+        _testDescription = "successful release"
+
+      , _input = defaultInput {
+          _iReleaseBranchName = "apples"
+        , _iTags = [
+            ReleaseTag $ SemVer 1 2 3
+          , CiTag      $ UnixTimeVer 123
+          ]
+        }
+
+      , _expectedOutput = initialOutput {
+          _oCommands = [
+              "checkout branch apples from tag ci/123"
+            , "deploy release/1.3.0-rc1"
+            ]
+        , _oLog = [
+              "Cut release branch, apples"
+            , "Deployed to preproduction"
+            , "Release candidate release/1.3.0-rc1 on release branch apples has been deployed. Evaluate this release on http://preprod.gust.com."
+            ]
+      }
+    }
+
+    noReleaseTag = FakeWorldTestCase {
+        _testDescription = "No release tag present"
+
+      , _input = defaultInput {
+          _iReleaseBranchName = "apples"
+        , _iTags = [
+            CiTag      $ UnixTimeVer 123
+          ]
+        }
+
+      , _expectedOutput = initialOutput {
+          _oCommands = [
+            "checkout branch apples from tag ci/123"
+          ]
+        , _oLog = [
+            "Cut release branch, apples"
+          , "Could not find latest release tag"
+          ]
+      }
+    }
+
 
 fakeWorldIntegrationTestCases :: [TestTree]
 fakeWorldIntegrationTestCases = map fakeWorldTestCase testCases
 
-testCases :: [FakeWorldTestCase]
-testCases = [successful, failing]
-  where
-    successful = FakeWorldTestCase {
-        testDescription = "successful release"
-      , startWorld = defaultWorld {
-            wReleaseBranchName = "apples"
-          , wTags = [
-              ReleaseTag $ SemVer 1 2 3
-            , CiTag $ SemVer 1 1 1
-            ]
-          }
-      , endWorld = defaultWorld {
-            wReleaseBranchName = "apples"
-          , wCurrentDeployment = Just $ ReleaseCandidateTag (SemVer 1 3 3) 1
-          , wTags = [
-              ReleaseTag $ SemVer 1 2 3
-            , CiTag $ SemVer 1 1 1
-            ]
-
-          , wBranches = [("apples","ci/1.1.1")]
-          , wLog = [
-              "Cut release branch, apples"
-            , "Deployed to preproduction"
-            , "Release candidate release/1.3.3-rc1/apples has been deployed. Evaluate this release on http://preprod.gust.com."
-            ]
-          }
-
-      }
-
-    failing = FakeWorldTestCase {
-        testDescription = "failing release"
-      , startWorld = defaultWorld {
-            wTags = [
-                CiTag $ SemVer 1 1 1
-              ]
-          }
-      , endWorld = defaultWorld {
-            wCurrentDeployment = Nothing
-          , wTags = [
-                CiTag $ SemVer 1 1 1
-              ]
-
-          , wBranches = [("bananas","ci/1.1.1")]
-          , wLog = [
-              "Cut release branch, bananas"
-            , "Could not find latest release tag"
-            ]
-          }
-
-      }
-
-
-
 fakeWorldTestCase :: FakeWorldTestCase -> TestTree
-fakeWorldTestCase tc = testCase (testDescription tc) $
- run (startWorld tc) @?= endWorld tc
+fakeWorldTestCase tc = testCase (tc^.testDescription) $
+  (run (tc^.input)) @?= (tc^.expectedOutput)
   where
-    run :: World -> World
-    run startWorld = endWorld
+    run :: Input -> Output
+    run input = output
       where
-        ((), endWorld) = runState stateInterpretation startWorld
+        output = _wOutput endWorld
           where
-            stateInterpretation :: State World ()
-            stateInterpretation = do
-              eitherResult <- runEitherT $ interpret program
-              logMessages $ either (:[]) id eitherResult
-
+            ((), endWorld) = runState stateInterpretation startWorld
               where
+                startWorld = defaultWorld {
+                  _wInput = input
+                }
+
+                stateInterpretation :: State World ()
+                stateInterpretation = do
+                  eitherResult <- runEitherT $ interpret program
+                  logMessages $ either (:[]) id eitherResult
+
                 logMessages :: [String] -> State World ()
-                logMessages e = do
-                  w <- get
-                  put w{wLog = e ++ (wLog w)}
+                logMessages e = wOutput.oLog %= (\message -> e ++ message)
 

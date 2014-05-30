@@ -1,6 +1,12 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Interpreter.State (
     interpret
     , ES
+    , defaultInput
+    , Input(..)
+    , initialOutput
+    , Output(..)
     , defaultWorld
     , World(..)
     )
@@ -16,24 +22,44 @@ import           Control.Monad.State.Strict (State, get, put, runState)
 import           Interpreter.Commands       (Interaction (..), Program)
 import           Parser.Tag                 (parsedTags)
 import           Types                      (Branch (..), Environment (..), Tag)
+import Control.Lens ((%=), (^.), makeLenses)
+import Data.Functor ((<$>))
 
+data Input = Input {
+    _iReleaseBranchName :: String
+  , _iTags              :: [Tag]
+  , _iBranches          :: [(String, String)]
+} deriving (Eq, Show)
+
+data Output = Output {
+    _oCommands :: [String]
+  , _oLog      :: [String]
+} deriving (Eq, Show)
 
 data World = World {
-    wReleaseBranchName :: String
-  , wCurrentDeployment :: Maybe Tag
-  , wTags              :: [Tag]
-  , wBranches          :: [(String, String)]
-  , wLog               :: [String]
-  } deriving (Eq, Show)
+    _wInput   :: Input
+  , _wOutput  :: Output
+} deriving (Eq, Show)
+
+defaultInput = Input {
+    _iReleaseBranchName = "bananas"
+  , _iTags              = []
+  , _iBranches          = []
+}
+
+initialOutput = Output {
+    _oCommands = []
+  , _oLog      = []
+}
 
 defaultWorld = World {
-    wReleaseBranchName  = "bananas"
-  , wCurrentDeployment  = Nothing
-  , wTags               = []
-  , wBranches           = []
-  , wLog                = []
-  }
+    _wInput  = defaultInput
+  , _wOutput = initialOutput
+}
 
+makeLenses ''Input
+makeLenses ''Output
+makeLenses ''World
 
 type ES = EitherT String (State World)
 
@@ -48,26 +74,23 @@ interpret (Free x) = case x of
   GitTag tag x                              -> gitTag tag                             >>  interpret x
 
   where
-
     getReleaseBranch :: ES Branch
     getReleaseBranch = do -- Branch . head <$> lift getArgs
       w <- get
-      return $ Branch $ wReleaseBranchName w
+      return $ Branch $ w^.wInput.iReleaseBranchName
 
     deployTag :: Tag -> Environment -> ES ()
     deployTag tag env = do -- executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
-      w <- get
-      put $! w{wCurrentDeployment = Just tag}
+      wOutput . oCommands %= (++ ["deploy " ++ show tag])
 
     gitTags :: ES [Tag]
     gitTags = do -- git ["fetch", "--tags"] >> git ["tag"] >>= hoistEither . parsedTags
       w <- get
-      return $ wTags w
+      return $ w^.wInput.iTags
 
     gitCheckoutNewBranchFromTag :: Branch -> Tag -> ES ()
     gitCheckoutNewBranchFromTag (Branch name) tag = do -- git ["checkout", "-b", name, (show tag)] >> return ()
-      w <- get
-      put $! w{wBranches = (name, show tag):(wBranches w)}
+      wOutput . oCommands %= (++ ["checkout branch " ++ name ++ " from tag " ++ show tag])
 
     gitPushTags :: String -> Branch -> ES ()
     gitPushTags remote branch = do -- git ["push", remote, show branch, "--tags"] >> return ()

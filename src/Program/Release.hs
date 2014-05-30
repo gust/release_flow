@@ -47,7 +47,7 @@ program = do
       deployTag releaseCandidateTag Preproduction
       msg "Deployed to preproduction"
 
-      msg $ "Release candidate " ++ show releaseCandidateTag ++ "/" ++ show releaseBranch ++ " has been deployed. Evaluate this release on http://preprod.gust.com."
+      msg $ "Release candidate " ++ show releaseCandidateTag ++ " on release branch " ++ show releaseBranch ++ " has been deployed. Evaluate this release on http://preprod.gust.com."
 
 
       where

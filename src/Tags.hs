@@ -12,7 +12,7 @@ getNextReleaseCandidateTag tag =
     nextRelease = nextMinorVersion $ version tag
 
     nextMinorVersion :: Version -> Version
-    nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) patch
+    nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) 0
 
 
 latestFilteredTag :: (Tag -> Bool) -> [Tag] -> Maybe Tag

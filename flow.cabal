@@ -29,6 +29,7 @@ executable flow
     , transformers
     , errors
     , free
+    , lens
 
 
 -- to run:
@@ -54,4 +55,5 @@ test-suite Tasty
     , errors
     , free
     , mtl
+    , lens
 
