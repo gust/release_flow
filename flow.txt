@@ -1,0 +1,76 @@
+What state are we in?
+- if we are in the middle of a release there will be a release branch and release candidate tag(s) 
+  without a corresponding release tag where the version represents the latest release or candidate
+
+Example (this does NOT mean we're in the middle of a release, it means we've abandoned one):
+1.2.1-rc1
+1.2.1-rc2
+1.2.1-rc3
+1.2.1
+
+1.1.0-rc1
+
+
+Moving through the states:
+
+if there is a bugs branch of the form release/<latest_release_candidate/bugs/* (we are in process of fixing a bug on a release candidate)
+  yes -> goto Step 3
+  no -> 
+    if we find a RC newer than last release ->
+      ask whether want to abandon RC
+        if yes -> 
+          remove all RC tags for the corresponding upcoming release (e.g. 1.2.1-rc1, 1.2.1-rc2, etc), 
+          push tags
+          goto Step 1
+        if no -> goto Step 2
+
+
+
+
+
+Step 1
+
+give <release_name> as the argument
+
+- takes the latest green ci tag
+- creates a branch named <release_name>
+- tags the head of this branch as release candidate
+- let's you know what it did
+- remove the release branch
+- exit
+
+Step 2
+
+- asks whether release candidate is good
+
+Yes:
+
+- create a release tag for the head of the release branch
+- push the tag
+- delete the release branch
+- let's you know what it did
+
+No:
+
+- branch off of the latest release candidate tag
+- branch off the temporary branch to create a bug fix: prompt user for <bug_name> release/1.2.1-rc1/bugs/<bug_name>
+- tell user to fix the bug
+- exit
+
+
+
+Step 3
+
+- once user has fixed bug, proceed to next step:
+  - merge bug fix branch into temporary branch --no-ff
+  - merge bug fix branch into integration --no-ff
+  - delete bug fix branch
+  - delete bug fix branch on origin
+  - tag new release candidate
+  - delete temporary branch
+- let's you know what it did
+
+~% release-flow
+- determine step
+- tell user what step we're in
+- tell them how to abort

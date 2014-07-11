@@ -60,4 +60,3 @@ instance Show Environment where
   show Preproduction  = "preproduction"
   show Production     = "production"
 
-

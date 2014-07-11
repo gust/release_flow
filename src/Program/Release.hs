@@ -10,15 +10,29 @@ import           Types                             (Branch (..),
                                                     Environment (..), Tag (..))
 
 import           Interpreter.Commands              (EWP, Program, deployTag,
-                                                    getReleaseBranch,
-                                                    gitCheckoutNewBranchFromTag,
-                                                    gitPushTags, gitTag,
-                                                    gitTags)
+                                                    , gitCheckoutTag
+                                                    , gitCheckoutNewBranchFromTag
+                                                    , gitPushTags
+                                                    , gitTag
+                                                    , gitTags
+                                                    )
 
 import           Tags                              (ciTagFilter,
                                                     getNextReleaseCandidateTag,
                                                     latestFilteredTag,
                                                     releaseTagFilter)
+
+
+data ReleaseState = NoReleaseInProgress Tag | ReleaseInProgress Tag
+
+{- TODO: need to handle the case where one of these tags does not exist -}
+determineReleaseState :: [Tag] -> ReleaseState
+determineReleaseState tags =
+  latestReleaseCandidate = latestFilteredTag releaseCandidateTagFilter tags
+  latestRelease = latestFilteredTag releaseTagFilter tags
+  case latestReleaseCandidate > latestRelease of
+    True -> ReleaseInProgress latestReleaseCandidate
+    False -> NoReleaseInProgress latestRelease
 
 program :: Program [String]
 program = do
@@ -37,33 +51,56 @@ program = do
 
     release :: EWP ()
     release = do
-      releaseBranch <- getReleaseBranch
-      cutReleaseBranch releaseBranch
-      msg $ "Cut release branch, " ++ show releaseBranch
-
-      releaseCandidateTag <- tagReleaseCandidate
-      gitPushTags "origin" releaseBranch
-
-      deployTag releaseCandidateTag Preproduction
-      msg "Deployed to preproduction"
-
-      msg $ "Release candidate " ++ show releaseCandidateTag ++ " on release branch " ++ show releaseBranch ++ " has been deployed. Evaluate this release on http://preprod.gust.com."
-
+      tags <- gitTags
+      case determineReleaseState tags of
+        ReleaseInProgress latestReleaseCandidate -> do
+          msg $ "Release candidate found: " ++ show latestReleaseCandidate
+          {- TODO prompt is release candidate good? -}
+          releaseTheCandidate latestReleaseCandidate
+        NoReleaseInProgress latestRelease -> newCandidate latestRelease
 
       where
-        msg message = lift $ tell [message]
+        releaseTheCandidate latestReleaseCandidate = do
+          gitCheckoutTag latestReleaseCandidate
+          gitTag $ releaseTag latestReleaseCandidate
+          gitPushTags
+          msg "Created tag: " ++ show releaseTag ++ ", deploy to production cowboy!"
 
-        tagReleaseCandidate :: EWP Tag
-        tagReleaseCandidate = do
-          maybeTag <- (return . getNextReleaseCandidateTag <=< latestFilteredTag releaseTagFilter) <$> gitTags
-          tag <- hoistEither $ maybeToEither "Could not find latest release tag" maybeTag
-          gitTag tag
-          return tag
 
-        cutReleaseBranch :: Branch -> EWP ()
-        cutReleaseBranch branch = do
-          maybeTag <- latestFilteredTag ciTagFilter <$> gitTags
-          tag <- hoistEither $ maybeToEither "Could not find latest green tag" maybeTag
-          gitCheckoutNewBranchFromTag branch tag
 
-        maybeToEither = flip maybe Right . Left
+          {- cutReleaseBranch releaseBranch -}
+          {- msg $ "Cut release branch, " ++ show releaseBranch -}
+
+          releaseCandidateTag <- tagReleaseCandidate
+          gitPushTags "origin" releaseBranch
+
+          deployTag releaseCandidateTag Preproduction
+          msg "Deployed to preproduction"
+
+          msg $ "Release candidate " ++ show releaseCandidateTag ++ " on release branch " ++ show releaseBranch ++ " has been deployed. Evaluate this release on http://preprod.gust.com."
+
+
+          where
+            msg message = lift $ tell [message]
+
+            tagReleaseCandidate :: EWP Tag
+            tagReleaseCandidate = do
+              maybeTag <- (return . getNextReleaseCandidateTag <=< latestFilteredTag releaseTagFilter) <$> gitTags
+              tag <- hoistEither $ maybeToEither "Could not find latest release tag" maybeTag
+              gitTag tag
+              return tag
+
+            {- cutReleaseBranch :: Branch -> EWP () -}
+            {- cutReleaseBranch branch = do -}
+              {- maybeTag <- latestFilteredTag ciTagFilter <$> gitTags -}
+              {- tag <- hoistEither $ maybeToEither "Could not find latest green tag" maybeTag -}
+              {- gitCheckoutNewBranchFromTag branch tag -}
+
+            releaseTag (ReleaseCandidateTag v _) = ReleaseTag v
+
+            maybeToEither = flip maybe Right . Left
+
+
+        newCandidate latestRelease = undefined
+          {- nextReleaseCandidateTag = getNextReleaseCandidateTag latestReleaseCandidate -}
+          {- releaseCandidateTag <- tagReleaseCandidate -}

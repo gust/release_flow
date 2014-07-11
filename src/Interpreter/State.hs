@@ -29,6 +29,7 @@ data Input = Input {
     _iReleaseBranchName :: String
   , _iTags              :: [Tag]
   , _iBranches          :: [(String, String)]
+  , _iUserInput         :: [String]
 } deriving (Eq, Show)
 
 data Output = Output {
@@ -45,6 +46,7 @@ defaultInput = Input {
     _iReleaseBranchName = "bananas"
   , _iTags              = []
   , _iBranches          = []
+  , _iUserInput         = []
 }
 
 initialOutput = Output {
