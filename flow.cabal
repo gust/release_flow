@@ -31,6 +31,8 @@ executable flow
     , free
     , lens
 
+-- cabal install with tests support:
+-- cabal install --enable-tests
 
 -- to run:
 -- cabal configure --enable-tests

@@ -4,8 +4,8 @@ module Interpreter.Commands (
     Interaction(..)
   , Program
   , EWP
-  , getReleaseBranch
   , deployTag
+  , gitCheckoutTag
   , gitTags
   , gitCheckoutNewBranchFromTag
   , gitPushTags
@@ -23,11 +23,11 @@ import           Types                             (Branch (..), Environment,
 
 
 data Interaction x
-  = GetReleaseBranch (Branch -> x)
-  | DeployTag Tag Environment x
+  = DeployTag Tag Environment x
+  | GitCheckoutTag Tag x
   | GitTags ([Tag] -> x)
   | GitCheckoutNewBranchFromTag Branch Tag x
-  | GitPushTags String Branch x
+  | GitPushTags String x
   | GitTag Tag x
   deriving Functor
 
@@ -35,8 +35,8 @@ type Program = Free Interaction
 
 type EWP =  EitherT String (WriterT [String] Program)
 
-getReleaseBranch :: EWP Branch
-getReleaseBranch = lift $ liftF $ GetReleaseBranch id
+gitCheckoutTag :: Tag -> EWP ()
+gitCheckoutTag tag = lift $ liftF $ GitCheckoutTag tag ()
 
 deployTag :: Tag -> Environment -> EWP ()
 deployTag tag env = lift $ liftF $ DeployTag tag env ()
@@ -47,8 +47,8 @@ gitTags = lift $ liftF $ GitTags id
 gitCheckoutNewBranchFromTag :: Branch -> Tag -> EWP ()
 gitCheckoutNewBranchFromTag branch tag = lift $ liftF $ GitCheckoutNewBranchFromTag branch tag ()
 
-gitPushTags :: String -> Branch -> EWP ()
-gitPushTags remote branch = lift $ liftF $ GitPushTags remote branch ()
+gitPushTags :: String -> EWP ()
+gitPushTags remote = lift $ liftF $ GitPushTags remote ()
 
 gitTag :: Tag -> EWP ()
 gitTag tag = lift $ liftF $ GitTag tag ()

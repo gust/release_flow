@@ -22,17 +22,13 @@ type EIO = EitherT String IO
 interpret :: Program a -> EitherT String IO a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
-  GetReleaseBranch f                        -> getReleaseBranch                       >>= interpret . f
   DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
   GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
-  GitPushTags remote branch x               -> gitPushTags remote branch              >>  interpret x
+  GitPushTags remote x                      -> gitPushTags remote                     >>  interpret x
   GitTag tag x                              -> gitTag tag                             >>  interpret x
 
   where
-    getReleaseBranch :: EIO Branch
-    getReleaseBranch = Branch . head <$> lift getArgs
-
     deployTag :: Tag -> Environment -> EIO ()
     deployTag tag env = executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
 
@@ -42,8 +38,8 @@ interpret (Free x) = case x of
     gitCheckoutNewBranchFromTag :: Branch -> Tag -> EIO ()
     gitCheckoutNewBranchFromTag (Branch name) tag = git ["checkout", "-b", name, (show tag)] >> return ()
 
-    gitPushTags :: String -> Branch -> EIO ()
-    gitPushTags remote branch = git ["push", remote, show branch, "--tags"] >> return ()
+    gitPushTags :: String -> EIO ()
+    gitPushTags remote = git ["push", remote, "--tags"] >> return ()
 
     gitTag :: Tag -> EIO ()
     gitTag tag = git ["tag", show tag] >> return ()

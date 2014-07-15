@@ -13,16 +13,20 @@ Example (this does NOT mean we're in the middle of a release, it means we've aba
 
 Moving through the states:
 
-if there is a bugs branch of the form release/<latest_release_candidate/bugs/* (we are in process of fixing a bug on a release candidate)
+is there a bugs branch of the form release/<latest_release_candidate/bugs/* (we are in process of fixing a bug on a release candidate) ?
   yes -> goto Step 3
   no -> 
-    if we find a RC newer than last release ->
-      ask whether want to abandon RC
-        if yes -> 
-          remove all RC tags for the corresponding upcoming release (e.g. 1.2.1-rc1, 1.2.1-rc2, etc), 
-          push tags
-          goto Step 1
-        if no -> goto Step 2
+    can we find a RC newer than last release ?
+      no ->
+        create a new release candidate
+        push tags
+      yes ->
+        do we want to abandon RC ?
+          yes ->
+            remove all RC tags for the corresponding upcoming release (e.g. 1.2.1-rc1, 1.2.1-rc2, etc), 
+            push tags
+            goto Step 1
+          no -> goto Step 2
 
 
 

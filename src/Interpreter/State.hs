@@ -19,11 +19,11 @@ import           Control.Monad.Trans.Either (EitherT, hoistEither)
 import           Control.Monad.Free         (Free (..))
 import           Control.Monad.State.Strict (State, get, put, runState)
 
+import           Control.Lens               (makeLenses, (%=), (^.))
+import           Data.Functor               ((<$>))
 import           Interpreter.Commands       (Interaction (..), Program)
 import           Parser.Tag                 (parsedTags)
 import           Types                      (Branch (..), Environment (..), Tag)
-import Control.Lens ((%=), (^.), makeLenses)
-import Data.Functor ((<$>))
 
 data Input = Input {
     _iReleaseBranchName :: String
@@ -38,8 +38,8 @@ data Output = Output {
 } deriving (Eq, Show)
 
 data World = World {
-    _wInput   :: Input
-  , _wOutput  :: Output
+    _wInput  :: Input
+  , _wOutput :: Output
 } deriving (Eq, Show)
 
 defaultInput = Input {
@@ -68,19 +68,13 @@ type ES = EitherT String (State World)
 interpret :: Program a -> ES a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
-  GetReleaseBranch f                        -> getReleaseBranch                       >>= interpret . f
   DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
   GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
-  GitPushTags remote branch x               -> gitPushTags remote branch              >>  interpret x
+  GitPushTags remote x                      -> gitPushTags remote                     >>  interpret x
   GitTag tag x                              -> gitTag tag                             >>  interpret x
 
   where
-    getReleaseBranch :: ES Branch
-    getReleaseBranch = do -- Branch . head <$> lift getArgs
-      w <- get
-      return $ Branch $ w^.wInput.iReleaseBranchName
-
     deployTag :: Tag -> Environment -> ES ()
     deployTag tag env = do -- executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
       wOutput . oCommands %= (++ ["deploy " ++ show tag])
@@ -94,8 +88,8 @@ interpret (Free x) = case x of
     gitCheckoutNewBranchFromTag (Branch name) tag = do -- git ["checkout", "-b", name, (show tag)] >> return ()
       wOutput . oCommands %= (++ ["checkout branch " ++ name ++ " from tag " ++ show tag])
 
-    gitPushTags :: String -> Branch -> ES ()
-    gitPushTags remote branch = do -- git ["push", remote, show branch, "--tags"] >> return ()
+    gitPushTags :: String -> ES ()
+    gitPushTags remote = do -- git ["push", remote, show branch, "--tags"] >> return ()
       -- TODO
       return ()
 
