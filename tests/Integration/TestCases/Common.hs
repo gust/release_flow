@@ -1,4 +1,4 @@
-module Integration.TestCases.Common 
+module Integration.TestCases.Common
   (
     noReleaseInProgress
   , releaseInProgressGood
@@ -8,8 +8,10 @@ module Integration.TestCases.Common
   where
 
 
-import           Interpreter.State          (World (..), defaultWorld, Input(..), defaultInput, Output(..), initialOutput, interpret)
-import           Types                      (Tag (..), Version (..))
+import           Interpreter.State (Input (..), Output (..), World (..),
+                                    defaultInput, defaultWorld, initialOutput,
+                                    interpret)
+import           Types             (Tag (..), Version (..))
 
 
 data FakeWorldTestCase = FakeWorldTestCase {
@@ -31,13 +33,13 @@ noReleaseInProgress = FakeWorldTestCase {
 
   , _expectedOutput = initialOutput {
       _oCommands = [
-          "git co ci/123"
+          "git checkout ci/123"
         , "git tag release/1.3.0-rc1"
         , "git push origin --tags"
         ]
     , _oLog = [
-          "No release candidate found, starting new release 1.3.0"
-        , "Created tag: release/1.3.0-rc1"
+          "No outstanding release candidates found, starting new release candidate: release/1.3.0-rc1"
+        {- , "Created tag: release/1.3.0-rc1" -}
         ]
   }
 }
@@ -104,8 +106,7 @@ successful = FakeWorldTestCase {
     _testDescription = "successful release"
 
   , _input = defaultInput {
-      _iReleaseBranchName = "apples"
-    , _iTags = [
+      _iTags = [
         ReleaseTag $ SemVer 1 2 3
       , CiTag      $ UnixTimeVer 123
       ]
@@ -128,8 +129,7 @@ noReleaseTag = FakeWorldTestCase {
     _testDescription = "No release tag present"
 
   , _input = defaultInput {
-      _iReleaseBranchName = "apples"
-    , _iTags = [
+      _iTags = [
         CiTag      $ UnixTimeVer 123
       ]
     }

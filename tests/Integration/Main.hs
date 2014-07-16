@@ -2,19 +2,23 @@
 
 module Integration.Main (fakeWorldIntegrationTestCases) where
 
-import           Test.Tasty                 (TestTree)
-import           Test.Tasty.HUnit           (testCase, (@?=))
+import           Test.Tasty                   (TestTree)
+import           Test.Tasty.HUnit             (testCase, (@?=))
 
-import           Control.Monad.State.Strict (State, get, put, runState)
-import           Control.Monad.Trans.Either (EitherT, runEitherT)
-import           Data.List                  (intercalate)
+import           Control.Monad.State.Strict   (State, get, put, runState)
+import           Control.Monad.Trans.Either   (EitherT, runEitherT)
+import           Data.List                    (intercalate)
 
-import           Interpreter.State          (World (..), defaultWorld, Input(..), defaultInput, Output(..), initialOutput, interpret)
-import           Program.Release            (program)
-import           Types                      (Tag (..), Version (..))
-import Control.Lens ((%=), (^.), makeLenses)
+import           Control.Lens                 (makeLenses, (%=), (^.))
+import           Interpreter.State            (Input (..), Output (..),
+                                               World (..), defaultInput,
+                                               defaultWorld, initialOutput,
+                                               interpret)
+import           Program.Release              (program)
+import           Types                        (Tag (..), Version (..))
 
-import Integration.TestCases.Common
+import           Integration.TestCases.Common (FakeWorldTestCase (..),
+                                               noReleaseInProgress)
 
 makeLenses ''FakeWorldTestCase
 
@@ -23,8 +27,8 @@ makeLenses ''Output
 makeLenses ''World
 
 testCases :: [FakeWorldTestCase]
-testCases = [noReleaseInProgress, releaseInProgressGood, releaseInProgressBad]
-
+{- testCases = [noReleaseInProgress, releaseInProgressGood, releaseInProgressBad] -}
+testCases = [noReleaseInProgress]
 
 fakeWorldIntegrationTestCases :: [TestTree]
 fakeWorldIntegrationTestCases = map fakeWorldTestCase testCases

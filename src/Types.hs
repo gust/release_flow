@@ -47,15 +47,18 @@ instance Show Tag where
   show tag@(ReleaseCandidateTag ver rc)  = prefix(tag) ++ (show ver) ++ "-rc" ++ (show rc)
 
 instance Ord Tag where
+  compare (ReleaseTag a) (ReleaseCandidateTag b rcb) = a `compare` b
+  compare (ReleaseCandidateTag a rca) (ReleaseTag b) = a `compare` b
+  compare (ReleaseCandidateTag a rca) (ReleaseCandidateTag b rcb) = if a `compare` b == EQ then rca `compare` rcb else a `compare` b
   compare (ReleaseTag a) (ReleaseTag b) = a `compare` b
   compare (CiTag a) (CiTag b) = a `compare` b
-  compare _ _ = error "no comparison"
+  compare _ _ = error "no comparison possible between tags"
 
-data Branch = Branch {branchName :: String}
+data Branch = Branch {branchName :: String} deriving (Eq)
 instance Show Branch where
   show = branchName
 
-data Environment = Preproduction | Production
+data Environment = Preproduction | Production deriving (Eq)
 instance Show Environment where
   show Preproduction  = "preproduction"
   show Production     = "production"

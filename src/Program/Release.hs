@@ -56,9 +56,12 @@ program = do
         NoReleaseInProgress latestReleaseTag -> do
           -- checkout latest green build
           maybeTag <- latestFilteredTag ciTagFilter <$> gitTags
-          tag <- hoistEither $ maybeToEither "Could not find latest green tag" maybeTag
+          lastGreenTag <- hoistEither $ maybeToEither "Could not find latest green tag" maybeTag
+          gitCheckoutTag lastGreenTag
           -- tag next release candidate
-          gitTag $ getNextReleaseCandidateTag latestReleaseTag
+          let releaseCandidateTag = getNextReleaseCandidateTag latestReleaseTag
+          msg $ "No outstanding release candidates found, starting new release candidate: " ++ (show releaseCandidateTag)
+          gitTag releaseCandidateTag
           -- push tags
           gitPushTags "origin"
 
@@ -117,13 +120,9 @@ program = do
               {- tag <- hoistEither $ maybeToEither "Could not find latest green tag" maybeTag -}
               {- gitCheckoutNewBranchFromTag branch tag -}
 
-
-
-
         newCandidate latestRelease = undefined
           {- nextReleaseCandidateTag = getNextReleaseCandidateTag latestReleaseCandidate -}
           {- releaseCandidateTag <- tagReleaseCandidate -}
-
 
         msg message = lift $ tell [message]
 

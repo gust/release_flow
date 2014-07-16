@@ -26,10 +26,9 @@ import           Parser.Tag                 (parsedTags)
 import           Types                      (Branch (..), Environment (..), Tag)
 
 data Input = Input {
-    _iReleaseBranchName :: String
-  , _iTags              :: [Tag]
-  , _iBranches          :: [(String, String)]
-  , _iUserInput         :: [String]
+    _iTags      :: [Tag]
+  , _iBranches  :: [(String, String)]
+  , _iUserInput :: [String]
 } deriving (Eq, Show)
 
 data Output = Output {
@@ -43,8 +42,7 @@ data World = World {
 } deriving (Eq, Show)
 
 defaultInput = Input {
-    _iReleaseBranchName = "bananas"
-  , _iTags              = []
+    _iTags              = []
   , _iBranches          = []
   , _iUserInput         = []
 }
@@ -68,6 +66,7 @@ type ES = EitherT String (State World)
 interpret :: Program a -> ES a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
+  GitCheckoutTag tag x                      -> gitCheckoutTag tag                     >>  interpret x
   DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
   GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
@@ -75,6 +74,9 @@ interpret (Free x) = case x of
   GitTag tag x                              -> gitTag tag                             >>  interpret x
 
   where
+    gitCheckoutTag :: Tag -> ES ()
+    gitCheckoutTag tag = wOutput . oCommands %= (++ ["git checkout " ++ show tag])
+
     deployTag :: Tag -> Environment -> ES ()
     deployTag tag env = do -- executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
       wOutput . oCommands %= (++ ["deploy " ++ show tag])
@@ -90,11 +92,9 @@ interpret (Free x) = case x of
 
     gitPushTags :: String -> ES ()
     gitPushTags remote = do -- git ["push", remote, show branch, "--tags"] >> return ()
-      -- TODO
-      return ()
+      wOutput . oCommands %= (++ ["git push " ++ remote ++ " --tags"])
 
     gitTag :: Tag -> ES ()
     gitTag tag = do -- git ["tag", show tag] >> return ()
-      -- TODO
-      return ()
+      wOutput . oCommands %= (++ ["git tag " ++ show tag])
 

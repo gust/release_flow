@@ -22,6 +22,7 @@ type EIO = EitherT String IO
 interpret :: Program a -> EitherT String IO a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
+  GitCheckoutTag tag x                      -> gitCheckoutTag tag                     >>  interpret x
   DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
   GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
@@ -29,6 +30,9 @@ interpret (Free x) = case x of
   GitTag tag x                              -> gitTag tag                             >>  interpret x
 
   where
+    gitCheckoutTag :: Tag -> EIO ()
+    gitCheckoutTag tag = git ["checkout", (show tag)] >> return ()
+
     deployTag :: Tag -> Environment -> EIO ()
     deployTag tag env = executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
 
