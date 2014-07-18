@@ -26,7 +26,11 @@ instance Show Version where
 
 instance Ord Version where
   compare (UnixTimeVer x) (UnixTimeVer y) = x `compare` y
-  compare (SemVer x _ _)  (SemVer y _ _)  = x `compare` y
+  compare (SemVer majorX minorX _)  (SemVer majorY minorY _)  = 
+    let majorComparison = majorX `compare` majorY in
+    if majorComparison == EQ
+    then minorX `compare` minorY
+    else majorComparison
   compare _ _                             = error "no comparison"
 
 
@@ -63,3 +67,4 @@ instance Show Environment where
   show Preproduction  = "preproduction"
   show Production     = "production"
 
+data ReleaseState = NoReleaseInProgress Tag | ReleaseInProgress Tag deriving (Eq, Show)

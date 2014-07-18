@@ -1,4 +1,4 @@
-module Program.Release (program) where
+module Program.Release (program, determineReleaseState) where
 
 import           Control.Applicative               ((<$>))
 import           Control.Monad                     ((<=<))
@@ -9,7 +9,8 @@ import           Data.Maybe                        (fromMaybe)
 
 import           Types                             (Branch (..),
                                                     Environment (..), Tag (..),
-                                                    Version (..))
+                                                    Version (..),
+                                                    ReleaseState(..))
 
 import           Interpreter.Commands              (EWP, Program, deployTag,
                                                     gitCheckoutNewBranchFromTag,
@@ -26,9 +27,21 @@ import           Tags                              (ciTagFilter,
                                                     releaseTagFilter)
 
 
-data ReleaseState = NoReleaseInProgress Tag | ReleaseInProgress Tag
 
-
+{- TODO: need to handle the case where one of these tags does not exist -}
+determineReleaseState :: [Tag] -> ReleaseState
+determineReleaseState tags =
+  let
+    latestReleaseCandidate = fromMaybe
+      defaultReleaseCandidateTag $
+      latestFilteredTag releaseCandidateTagFilter tags
+    latestRelease = fromMaybe
+      defaultReleaseTag $
+      latestFilteredTag releaseTagFilter tags
+  in
+  if latestReleaseCandidate > latestRelease
+    then ReleaseInProgress latestReleaseCandidate
+    else NoReleaseInProgress latestRelease
 
 program :: Program [String]
 program = do
@@ -50,9 +63,11 @@ program = do
       tags <- gitTags
       case determineReleaseState tags of
         ReleaseInProgress latestReleaseCandidate -> do
-          msg $ "Release candidate found: " ++ show latestReleaseCandidate
-          {- TODO prompt is release candidate good? -}
-          releaseCandidate latestReleaseCandidate
+          msg $ "Release candidate found: " ++ (show latestReleaseCandidate)
+          answer <- getLineAfterPrompt "Is this release candidate good? y(es)/n(o): "
+          case answer of
+            "yes" -> releaseCandidate latestReleaseCandidate
+            _ -> return ()
         NoReleaseInProgress latestReleaseTag -> do
           -- checkout latest green build
           maybeTag <- latestFilteredTag ciTagFilter <$> gitTags
@@ -66,21 +81,6 @@ program = do
           gitPushTags "origin"
 
       where
-        {- TODO: need to handle the case where one of these tags does not exist -}
-        determineReleaseState :: [Tag] -> ReleaseState
-        determineReleaseState tags =
-          let
-            latestReleaseCandidate = fromMaybe
-              defaultReleaseCandidateTag $
-              latestFilteredTag releaseCandidateTagFilter tags
-            latestRelease = fromMaybe
-              defaultReleaseTag $
-              latestFilteredTag releaseTagFilter tags
-          in
-          if latestReleaseCandidate > latestRelease
-            then ReleaseInProgress latestReleaseCandidate
-            else NoReleaseInProgress latestRelease
-
         releaseCandidate latestReleaseCandidate = do
           gitCheckoutTag latestReleaseCandidate
           let releaseTag = getReleaseTagFromCandidate latestReleaseCandidate
@@ -91,17 +91,17 @@ program = do
           {- cutReleaseBranch releaseBranch -}
           {- msg $ "Cut release branch, " ++ show releaseBranch -}
 
-          releaseCandidateTag <- tagReleaseCandidate
-          gitPushTags "origin"
+          {- releaseCandidateTag <- tagReleaseCandidate -}
+          {- gitPushTags "origin" -}
 
-          deployTag releaseCandidateTag Preproduction
-          msg "Deployed to preproduction"
+          {- deployTag releaseCandidateTag Preproduction -}
+          {- msg "Deployed to preproduction" -}
 
-          msg $ "Release candidate " ++
-            (show releaseCandidateTag) ++
+          {- msg $ "Release candidate " ++ -}
+            {- (show releaseCandidateTag) ++ -}
             {- " on release branch " ++ -}
             {- (show releaseBranch) ++ -}
-            " has been deployed. Evaluate this release on http://preprod.gust.com."
+            {- " has been deployed. Evaluate this release on http://preprod.gust.com." -}
 
           where
             -- release/1.3.0-rc2/bugs/theres-a-bug-in-the-code

@@ -54,7 +54,7 @@ releaseInProgressGood = FakeWorldTestCase {
       , CiTag      $ UnixTimeVer 123
       ]
     , _iUserInput = [
-        "yes"
+        ("Is this release candidate good? y(es)/n(o):", "yes")
       ]
     }
 
@@ -65,7 +65,6 @@ releaseInProgressGood = FakeWorldTestCase {
         ]
     , _oLog = [
           "Release candidate found: release/1.3.0-rc1"
-        , "Is this release candidate good? y(es)/n(o):"
         , "Created tag: release/1.3.0, deploy to production cowboy!"
         ]
   }
@@ -81,8 +80,8 @@ releaseInProgressBad = FakeWorldTestCase {
       , CiTag      $ UnixTimeVer 123
       ]
     , _iUserInput = [
-        "no"
-      , "theres-a-bug-in-the-code"
+        ("Is this release candidate good? y(es)/n(o):", "no")
+      , ("What bug are you fixing?", "theres-a-bug-in-the-code")
       ]
     }
 
@@ -93,8 +92,6 @@ releaseInProgressBad = FakeWorldTestCase {
         ]
     , _oLog = [
           "Release candidate found: release/1.3.0-rc1"
-        , "Is this release candidate good? y(es)/n(o):"
-        , "What bug are you fixing?"
         , "Created temporary bug fix branch release/1.3.0-rc1/bugs/theres-a-bug-in-the-code"
         , "Fix your bug dummy!"
         ]

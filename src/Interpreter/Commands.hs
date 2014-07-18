@@ -23,7 +23,8 @@ import           Types                             (Branch (..), Environment,
 
 
 data Interaction x
-  = DeployTag Tag Environment x
+  = GetLineAfterPrompt String x
+  | DeployTag Tag Environment x
   | GitCheckoutTag Tag x
   | GitTags ([Tag] -> x)
   | GitCheckoutNewBranchFromTag Branch Tag x
@@ -34,6 +35,9 @@ data Interaction x
 type Program = Free Interaction
 
 type EWP =  EitherT String (WriterT [String] Program)
+
+getLineAfterPrompt :: String -> EWP String
+getLineAfterPrompt prompt = lift $ liftF $ GetLineAfterPrompt prompt id
 
 gitCheckoutTag :: Tag -> EWP ()
 gitCheckoutTag tag = lift $ liftF $ GitCheckoutTag tag ()

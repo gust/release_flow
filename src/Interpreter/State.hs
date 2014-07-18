@@ -12,6 +12,7 @@ module Interpreter.State (
     )
 where
 
+import qualified Data.Map                   (Map)
 import           Control.Error              (throwT)
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Monad.Trans.Either (EitherT, hoistEither)
@@ -28,7 +29,7 @@ import           Types                      (Branch (..), Environment (..), Tag)
 data Input = Input {
     _iTags      :: [Tag]
   , _iBranches  :: [(String, String)]
-  , _iUserInput :: [String]
+  , _iUserInput :: [(String, String)]
 } deriving (Eq, Show)
 
 data Output = Output {
@@ -66,6 +67,7 @@ type ES = EitherT String (State World)
 interpret :: Program a -> ES a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
+  GetLineAfterPrompt prompt x               -> getLineAfterPrompt prompt              >>  interpret . f
   GitCheckoutTag tag x                      -> gitCheckoutTag tag                     >>  interpret x
   DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
@@ -74,6 +76,12 @@ interpret (Free x) = case x of
   GitTag tag x                              -> gitTag tag                             >>  interpret x
 
   where
+    getLineAfterPrompt :: String -> ES String
+    getLineAfterPrompt prompt = do
+      w <- get
+      return $ M.fromList w^.wInput.iUserInput
+
+
     gitCheckoutTag :: Tag -> ES ()
     gitCheckoutTag tag = wOutput . oCommands %= (++ ["git checkout " ++ show tag])
 

@@ -18,7 +18,7 @@ import           Program.Release              (program)
 import           Types                        (Tag (..), Version (..))
 
 import           Integration.TestCases.Common (FakeWorldTestCase (..),
-                                               noReleaseInProgress)
+                                               noReleaseInProgress, releaseInProgressGood)
 
 makeLenses ''FakeWorldTestCase
 
@@ -28,7 +28,7 @@ makeLenses ''World
 
 testCases :: [FakeWorldTestCase]
 {- testCases = [noReleaseInProgress, releaseInProgressGood, releaseInProgressBad] -}
-testCases = [noReleaseInProgress]
+testCases = [noReleaseInProgress, releaseInProgressGood]
 
 fakeWorldIntegrationTestCases :: [TestTree]
 fakeWorldIntegrationTestCases = map fakeWorldTestCase testCases
