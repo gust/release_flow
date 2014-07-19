@@ -12,10 +12,11 @@ module Interpreter.State (
     )
 where
 
-import qualified Data.Map                   (Map)
 import           Control.Error              (throwT)
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Monad.Trans.Either (EitherT, hoistEither)
+import qualified Data.Map                   as M
+import           Data.Maybe                 (fromJust)
 
 import           Control.Monad.Free         (Free (..))
 import           Control.Monad.State.Strict (State, get, put, runState)
@@ -67,7 +68,7 @@ type ES = EitherT String (State World)
 interpret :: Program a -> ES a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
-  GetLineAfterPrompt prompt x               -> getLineAfterPrompt prompt              >>  interpret . f
+  GetLineAfterPrompt prompt f               -> getLineAfterPrompt prompt              >>= interpret . f
   GitCheckoutTag tag x                      -> gitCheckoutTag tag                     >>  interpret x
   DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
@@ -79,8 +80,7 @@ interpret (Free x) = case x of
     getLineAfterPrompt :: String -> ES String
     getLineAfterPrompt prompt = do
       w <- get
-      return $ M.fromList w^.wInput.iUserInput
-
+      return $ fromJust $ M.lookup prompt $ M.fromList $ w^.wInput.iUserInput
 
     gitCheckoutTag :: Tag -> ES ()
     gitCheckoutTag tag = wOutput . oCommands %= (++ ["git checkout " ++ show tag])

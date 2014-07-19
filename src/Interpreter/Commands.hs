@@ -4,6 +4,7 @@ module Interpreter.Commands (
     Interaction(..)
   , Program
   , EWP
+  , getLineAfterPrompt
   , deployTag
   , gitCheckoutTag
   , gitTags
@@ -23,7 +24,7 @@ import           Types                             (Branch (..), Environment,
 
 
 data Interaction x
-  = GetLineAfterPrompt String x
+  = GetLineAfterPrompt String (String -> x)
   | DeployTag Tag Environment x
   | GitCheckoutTag Tag x
   | GitTags ([Tag] -> x)
@@ -33,7 +34,6 @@ data Interaction x
   deriving Functor
 
 type Program = Free Interaction
-
 type EWP =  EitherT String (WriterT [String] Program)
 
 getLineAfterPrompt :: String -> EWP String

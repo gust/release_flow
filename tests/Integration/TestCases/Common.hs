@@ -54,17 +54,18 @@ releaseInProgressGood = FakeWorldTestCase {
       , CiTag      $ UnixTimeVer 123
       ]
     , _iUserInput = [
-        ("Is this release candidate good? y(es)/n(o):", "yes")
+        ("Is this release candidate good? y(es)/n(o): ", "yes")
       ]
     }
 
   , _expectedOutput = initialOutput {
       _oCommands = [
-          "git tag release/1.3.0"
+          "git checkout release/1.3.0-rc2"
+        , "git tag release/1.3.0"
         , "git push origin --tags"
         ]
     , _oLog = [
-          "Release candidate found: release/1.3.0-rc1"
+          "Release candidate found: release/1.3.0-rc2"
         , "Created tag: release/1.3.0, deploy to production cowboy!"
         ]
   }

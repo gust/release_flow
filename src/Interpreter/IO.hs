@@ -22,6 +22,7 @@ type EIO = EitherT String IO
 interpret :: Program a -> EitherT String IO a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
+  GetLineAfterPrompt prompt f               -> getLineAfterPrompt prompt              >>= interpret . f
   GitCheckoutTag tag x                      -> gitCheckoutTag tag                     >>  interpret x
   DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
@@ -30,6 +31,9 @@ interpret (Free x) = case x of
   GitTag tag x                              -> gitTag tag                             >>  interpret x
 
   where
+    getLineAfterPrompt :: String -> EIO String
+    getLineAfterPrompt prompt = undefined
+
     gitCheckoutTag :: Tag -> EIO ()
     gitCheckoutTag tag = git ["checkout", (show tag)] >> return ()
 

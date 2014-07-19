@@ -8,11 +8,12 @@ import           Control.Monad.Trans.Writer.Strict (WriterT, runWriterT, tell)
 import           Data.Maybe                        (fromMaybe)
 
 import           Types                             (Branch (..),
-                                                    Environment (..), Tag (..),
-                                                    Version (..),
-                                                    ReleaseState(..))
+                                                    Environment (..),
+                                                    ReleaseState (..), Tag (..),
+                                                    Version (..))
 
 import           Interpreter.Commands              (EWP, Program, deployTag,
+                                                    getLineAfterPrompt,
                                                     gitCheckoutNewBranchFromTag,
                                                     gitCheckoutTag, gitPushTags,
                                                     gitTag, gitTags)

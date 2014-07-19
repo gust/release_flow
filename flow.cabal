@@ -30,6 +30,7 @@ executable flow
     , errors
     , free
     , lens
+    , containers
 
 -- cabal install with tests support:
 -- cabal install --enable-tests
@@ -58,4 +59,5 @@ test-suite Tasty
     , free
     , mtl
     , lens
+    , containers
 
