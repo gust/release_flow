@@ -95,7 +95,9 @@ releaseInProgressBad = FakeWorldTestCase {
           "git tags"
         , "git tags"
         , "git tag -d release/1.3.0-rc1"
+        , "git push origin :refs/tags/release/1.3.0-rc1"
         , "git tag -d release/1.3.0-rc2"
+        , "git push origin :refs/tags/release/1.3.0-rc2"
         ]
     , _oLog = [
           "Release candidate found: release/1.3.0-rc2"

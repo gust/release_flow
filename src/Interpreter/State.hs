@@ -106,8 +106,9 @@ interpret (Free x) = case x of
       wOutput . oCommands %= (++ ["git push " ++ remote ++ " --tags"])
 
     gitRemoveTag :: Tag -> ES ()
-    gitRemoveTag tag = do -- git ["tag", show tag] >> return ()
+    gitRemoveTag tag = do
       wOutput . oCommands %= (++ ["git tag -d " ++ show tag])
+      wOutput . oCommands %= (++ ["git push origin :refs/tags/" ++ show tag])
 
     gitTag :: Tag -> ES ()
     gitTag tag = do -- git ["tag", show tag] >> return ()
