@@ -16,13 +16,16 @@ import           Interpreter.Commands              (EWP, Program, deployTag,
                                                     getLineAfterPrompt,
                                                     gitCheckoutNewBranchFromTag,
                                                     gitCheckoutTag, gitPushTags,
-                                                    gitTag, gitTags)
+                                                    gitRemoveTag, gitTag,
+                                                    gitTags)
 
 import           Tags                              (ciTagFilter,
                                                     defaultReleaseCandidateTag,
                                                     defaultReleaseTag,
+                                                    getAllCandidatesForRelease,
                                                     getNextReleaseCandidateTag,
                                                     getReleaseTagFromCandidate,
+                                                    isReleaseCandidateTag,
                                                     latestFilteredTag,
                                                     releaseCandidateTagFilter,
                                                     releaseTagFilter)
@@ -67,7 +70,11 @@ program = do
           msg $ "Release candidate found: " ++ (show latestReleaseCandidate)
           answer <- getLineAfterPrompt "Is this release candidate good? y(es)/n(o): "
           case answer of
-            "yes" -> releaseCandidate latestReleaseCandidate
+            "y" -> releaseCandidate latestReleaseCandidate
+            "n" -> do
+              -- remove all RC tags for the corresponding upcoming release (e.g. 1.2.1-rc1, 1.2.1-rc2, etc)
+              removeAllCandidateTagsForRelease $ getReleaseTagFromCandidate latestReleaseCandidate
+              return ()
             _ -> return ()
         NoReleaseInProgress latestReleaseTag -> do
           -- checkout latest green build
@@ -82,6 +89,11 @@ program = do
           gitPushTags "origin"
 
       where
+        removeAllCandidateTagsForRelease :: Tag -> EWP ()
+        removeAllCandidateTagsForRelease releaseTag = do
+          tags <- gitTags
+          mapM_ gitRemoveTag $ getAllCandidatesForRelease releaseTag tags
+
         releaseCandidate latestReleaseCandidate = do
           gitCheckoutTag latestReleaseCandidate
           let releaseTag = getReleaseTagFromCandidate latestReleaseCandidate

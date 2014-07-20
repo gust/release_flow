@@ -7,6 +7,8 @@ module Tags (
   , defaultReleaseCandidateTag
   , defaultReleaseTag
   , getReleaseTagFromCandidate
+  , isReleaseCandidateTag
+  , getAllCandidatesForRelease
   )
   where
 
@@ -50,5 +52,9 @@ ciTagFilter _ = False
 
 getReleaseTagFromCandidate (ReleaseCandidateTag v _) = ReleaseTag v
 
+isReleaseCandidateTag (ReleaseCandidateTag _ _) = True
+isReleaseCandidateTag _ = False
 
-
+getAllCandidatesForRelease :: Tag -> [Tag] -> [Tag]
+getAllCandidatesForRelease releaseTag =
+  filter (\tag -> isReleaseCandidateTag tag && (releaseTag == getReleaseTagFromCandidate tag) )

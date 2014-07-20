@@ -74,6 +74,7 @@ interpret (Free x) = case x of
   GitTags f                                 -> gitTags                                >>= interpret . f
   GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
   GitPushTags remote x                      -> gitPushTags remote                     >>  interpret x
+  GitRemoveTag tag x                        -> gitRemoveTag tag                       >>  interpret x
   GitTag tag x                              -> gitTag tag                             >>  interpret x
 
   where
@@ -83,7 +84,8 @@ interpret (Free x) = case x of
       return $ fromJust $ M.lookup prompt $ M.fromList $ w^.wInput.iUserInput
 
     gitCheckoutTag :: Tag -> ES ()
-    gitCheckoutTag tag = wOutput . oCommands %= (++ ["git checkout " ++ show tag])
+    gitCheckoutTag tag =
+      wOutput . oCommands %= (++ ["git checkout " ++ show tag])
 
     deployTag :: Tag -> Environment -> ES ()
     deployTag tag env = do -- executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
@@ -91,6 +93,7 @@ interpret (Free x) = case x of
 
     gitTags :: ES [Tag]
     gitTags = do -- git ["fetch", "--tags"] >> git ["tag"] >>= hoistEither . parsedTags
+      wOutput . oCommands %= (++ ["git tags"])
       w <- get
       return $ w^.wInput.iTags
 
@@ -101,6 +104,10 @@ interpret (Free x) = case x of
     gitPushTags :: String -> ES ()
     gitPushTags remote = do -- git ["push", remote, show branch, "--tags"] >> return ()
       wOutput . oCommands %= (++ ["git push " ++ remote ++ " --tags"])
+
+    gitRemoveTag :: Tag -> ES ()
+    gitRemoveTag tag = do -- git ["tag", show tag] >> return ()
+      wOutput . oCommands %= (++ ["git tag -d " ++ show tag])
 
     gitTag :: Tag -> ES ()
     gitTag tag = do -- git ["tag", show tag] >> return ()

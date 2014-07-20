@@ -32,7 +32,9 @@ interpret (Free x) = case x of
 
   where
     getLineAfterPrompt :: String -> EIO String
-    getLineAfterPrompt prompt = undefined
+    getLineAfterPrompt prompt = liftIO $ do
+      putStrLn prompt
+      getLine
 
     gitCheckoutTag :: Tag -> EIO ()
     gitCheckoutTag tag = git ["checkout", (show tag)] >> return ()

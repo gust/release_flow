@@ -33,7 +33,9 @@ noReleaseInProgress = FakeWorldTestCase {
 
   , _expectedOutput = initialOutput {
       _oCommands = [
-          "git checkout ci/123"
+          "git tags"
+        , "git tags"
+        , "git checkout ci/123"
         , "git tag release/1.3.0-rc1"
         , "git push origin --tags"
         ]
@@ -54,13 +56,14 @@ releaseInProgressGood = FakeWorldTestCase {
       , CiTag      $ UnixTimeVer 123
       ]
     , _iUserInput = [
-        ("Is this release candidate good? y(es)/n(o): ", "yes")
+        ("Is this release candidate good? y(es)/n(o): ", "y")
       ]
     }
 
   , _expectedOutput = initialOutput {
       _oCommands = [
-          "git checkout release/1.3.0-rc2"
+          "git tags"
+        , "git checkout release/1.3.0-rc2"
         , "git tag release/1.3.0"
         , "git push origin --tags"
         ]
@@ -76,25 +79,28 @@ releaseInProgressBad = FakeWorldTestCase {
 
   , _input = defaultInput {
       _iTags = [
-        ReleaseCandidateTag (SemVer 1 3 0) 2
+        ReleaseCandidateTag (SemVer 1 3 0) 1
+      , ReleaseCandidateTag (SemVer 1 3 0) 2
       , ReleaseTag $ SemVer 1 2 3
       , CiTag      $ UnixTimeVer 123
       ]
     , _iUserInput = [
-        ("Is this release candidate good? y(es)/n(o):", "no")
-      , ("What bug are you fixing?", "theres-a-bug-in-the-code")
+        ("Is this release candidate good? y(es)/n(o): ", "n")
+      , ("What bug are you fixing? (specify dash separated descriptor, e.g. 'theres-a-bug-in-the-code'): ", "theres-a-bug-in-the-code")
       ]
     }
 
   , _expectedOutput = initialOutput {
       _oCommands = [
-          "git co release/1.3.0-rc2"
-        , "git co -b release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
+          "git tags"
+        , "git tags"
+        , "git tag -d release/1.3.0-rc1"
+        , "git tag -d release/1.3.0-rc2"
         ]
     , _oLog = [
-          "Release candidate found: release/1.3.0-rc1"
-        , "Created temporary bug fix branch release/1.3.0-rc1/bugs/theres-a-bug-in-the-code"
-        , "Fix your bug dummy!"
+          "Release candidate found: release/1.3.0-rc2"
+        {- , "Created temporary bug fix branch release/1.3.0-rc1/bugs/theres-a-bug-in-the-code" -}
+        {- , "Fix your bug dummy!" -}
         ]
   }
 }

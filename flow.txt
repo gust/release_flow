@@ -17,16 +17,16 @@ is there a bugs branch of the form release/<latest_release_candidate/bugs/* (we 
   yes -> goto Step 3
   no -> 
     can we find a RC newer than last release ?
-      no ->
+      no -> (done)
         create a new release candidate
         push tags
-      yes ->
-        do we want to abandon RC ?
-          yes ->
+      yes -> 
+        is the RC good?
+          yes -> (done) goto Step 2
+          no -> 
             remove all RC tags for the corresponding upcoming release (e.g. 1.2.1-rc1, 1.2.1-rc2, etc), 
             push tags
             goto Step 1
-          no -> goto Step 2
 
 
 

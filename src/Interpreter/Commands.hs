@@ -10,6 +10,7 @@ module Interpreter.Commands (
   , gitTags
   , gitCheckoutNewBranchFromTag
   , gitPushTags
+  , gitRemoveTag
   , gitTag
   ) where
 
@@ -30,6 +31,7 @@ data Interaction x
   | GitTags ([Tag] -> x)
   | GitCheckoutNewBranchFromTag Branch Tag x
   | GitPushTags String x
+  | GitRemoveTag Tag x
   | GitTag Tag x
   deriving Functor
 
@@ -53,6 +55,9 @@ gitCheckoutNewBranchFromTag branch tag = lift $ liftF $ GitCheckoutNewBranchFrom
 
 gitPushTags :: String -> EWP ()
 gitPushTags remote = lift $ liftF $ GitPushTags remote ()
+
+gitRemoveTag :: Tag -> EWP ()
+gitRemoveTag tag = lift $ liftF $ GitRemoveTag tag ()
 
 gitTag :: Tag -> EWP ()
 gitTag tag = lift $ liftF $ GitTag tag ()
