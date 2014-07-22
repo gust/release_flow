@@ -101,54 +101,9 @@ releaseInProgressBad = FakeWorldTestCase {
         ]
     , _oLog = [
           "Release candidate found: release/1.3.0-rc2"
-        {- , "Created temporary bug fix branch release/1.3.0-rc1/bugs/theres-a-bug-in-the-code" -}
-        {- , "Fix your bug dummy!" -}
+        , "Removing stale release candidate tag: release/1.3.0-rc1"
+        , "Removing stale release candidate tag: release/1.3.0-rc2"
         ]
   }
 }
-
-
-successful = FakeWorldTestCase {
-    _testDescription = "successful release"
-
-  , _input = defaultInput {
-      _iTags = [
-        ReleaseTag $ SemVer 1 2 3
-      , CiTag      $ UnixTimeVer 123
-      ]
-    }
-
-  , _expectedOutput = initialOutput {
-      _oCommands = [
-          "checkout branch apples from tag ci/123"
-        , "deploy release/1.3.0-rc1"
-        ]
-    , _oLog = [
-          "Cut release branch, apples"
-        , "Deployed to preproduction"
-        , "Release candidate release/1.3.0-rc1 on release branch apples has been deployed. Evaluate this release on http://preprod.gust.com."
-        ]
-  }
-}
-
-noReleaseTag = FakeWorldTestCase {
-    _testDescription = "No release tag present"
-
-  , _input = defaultInput {
-      _iTags = [
-        CiTag      $ UnixTimeVer 123
-      ]
-    }
-
-  , _expectedOutput = initialOutput {
-      _oCommands = [
-        "checkout branch apples from tag ci/123"
-      ]
-    , _oLog = [
-        "Cut release branch, apples"
-      , "Could not find latest release tag"
-      ]
-  }
-}
-
 

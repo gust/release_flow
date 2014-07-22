@@ -92,7 +92,9 @@ program = do
         removeAllCandidateTagsForRelease :: Tag -> EWP ()
         removeAllCandidateTagsForRelease releaseTag = do
           tags <- gitTags
-          mapM_ gitRemoveTag $ getAllCandidatesForRelease releaseTag tags
+          mapM_ (\tag -> do
+            msg $ "Removing stale release candidate tag: " ++ (show tag)
+            gitRemoveTag tag) $ getAllCandidatesForRelease releaseTag tags
 
         releaseCandidate latestReleaseCandidate = do
           gitCheckoutTag latestReleaseCandidate
