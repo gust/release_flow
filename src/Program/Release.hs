@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiWayIf #-}
+
 module Program.Release (program, determineReleaseState) where
 
 import           Control.Applicative               ((<$>))
@@ -5,19 +7,24 @@ import           Control.Monad                     ((<=<))
 import           Control.Monad.Trans.Class         (lift)
 import           Control.Monad.Trans.Either        (hoistEither, runEitherT)
 import           Control.Monad.Trans.Writer.Strict (WriterT, runWriterT, tell)
-import           Data.Maybe                        (fromMaybe)
+import           Data.Maybe                        (fromMaybe, listToMaybe)
+import           Data.List                         (isPrefixOf)
 
 import           Types                             (Branch (..),
                                                     Environment (..),
                                                     ReleaseState (..), Tag (..),
-                                                    Version (..))
+                                                    Version (..),
+                                                    tmpBranch)
 
 import           Interpreter.Commands              (EWP, Program, deployTag,
                                                     getLineAfterPrompt,
                                                     gitCheckoutNewBranchFromTag,
+                                                    gitCreateAndCheckoutBranch,
+                                                    gitCheckoutBranch,
                                                     gitCheckoutTag, gitPushTags,
-                                                    gitRemoveTag, gitTag,
-                                                    gitTags)
+                                                    gitRemoveTag, gitRemoveBranch, gitTag,
+                                                    gitTags, gitBranches, gitMergeNoFF
+                                                    )
 
 import           Tags                              (ciTagFilter,
                                                     defaultReleaseCandidateTag,
@@ -31,21 +38,29 @@ import           Tags                              (ciTagFilter,
                                                     releaseTagFilter)
 
 
-
 {- TODO: need to handle the case where one of these tags does not exist -}
-determineReleaseState :: [Tag] -> ReleaseState
-determineReleaseState tags =
+determineReleaseState :: [Tag] -> [Branch] -> ReleaseState
+determineReleaseState tags branches =
   let
     latestReleaseCandidate = fromMaybe
       defaultReleaseCandidateTag $
       latestFilteredTag releaseCandidateTagFilter tags
+    bugfixBranch = findReleaseCandidateBugfixBranch latestReleaseCandidate branches
     latestRelease = fromMaybe
       defaultReleaseTag $
       latestFilteredTag releaseTagFilter tags
   in
-  if latestReleaseCandidate > latestRelease
-    then ReleaseInProgress latestReleaseCandidate
-    else NoReleaseInProgress latestRelease
+  case bugfixBranch of
+    Just branch -> ReleaseInProgressBugfix latestReleaseCandidate branch
+    Nothing ->
+      if latestReleaseCandidate > latestRelease 
+      then ReleaseInProgress latestReleaseCandidate
+      else NoReleaseInProgress latestRelease
+
+-- TODO handle case when there are multipe matching branches
+findReleaseCandidateBugfixBranch :: Tag -> [Branch] -> Maybe Branch
+findReleaseCandidateBugfixBranch releaseCandidateTag = 
+  listToMaybe . filter (isPrefixOf ((show releaseCandidateTag) ++ "/bugs") . show)
 
 program :: Program [String]
 program = do
@@ -65,21 +80,24 @@ program = do
     release :: EWP ()
     release = do
       tags <- gitTags
-      case determineReleaseState tags of
+      branches <- gitBranches
+      case determineReleaseState tags branches of
         ReleaseInProgress latestReleaseCandidate -> do
           msg $ "Release candidate found: " ++ (show latestReleaseCandidate)
           answer <- getLineAfterPrompt "Is this release candidate good? y(es)/n(o): "
           case answer of
             "y" -> releaseCandidate latestReleaseCandidate
             "n" -> do
-              -- remove all RC tags for the corresponding upcoming release (e.g. 1.2.1-rc1, 1.2.1-rc2, etc)
-              removeAllCandidateTagsForRelease $ getReleaseTagFromCandidate latestReleaseCandidate
-              return ()
+              bugBranchName <- getLineAfterPrompt "What bug are you fixing? (specify dash separated descriptor, e.g. 'theres-a-bug-in-the-code'): "
+              let bugFixBranch = Branch ((show latestReleaseCandidate) ++ "/bugs/" ++ bugBranchName)
+              gitCheckoutTag latestReleaseCandidate
+              gitCreateAndCheckoutBranch $ tmpBranch latestReleaseCandidate
+              gitCreateAndCheckoutBranch bugFixBranch
+              msg $ "Created branch: " ++ (show bugFixBranch) ++ ", fix your bug!"
             _ -> return ()
         NoReleaseInProgress latestReleaseTag -> do
           -- checkout latest green build
-          maybeTag <- latestFilteredTag ciTagFilter <$> gitTags
-          lastGreenTag <- hoistEither $ maybeToEither "Could not find latest green tag" maybeTag
+          lastGreenTag <- hoistEither $ maybeToEither "Could not find latest green tag" $ latestFilteredTag ciTagFilter tags
           gitCheckoutTag lastGreenTag
           -- tag next release candidate
           let releaseCandidateTag = getNextReleaseCandidateTag latestReleaseTag
@@ -87,57 +105,29 @@ program = do
           gitTag releaseCandidateTag
           -- push tags
           gitPushTags "origin"
+        ReleaseInProgressBugfix latestReleaseCandidate branch -> do
+          msg $ "Bugfix found: " ++ show branch
+          answer <- getLineAfterPrompt "Is the bug fixed? y(es)/n(o): "
+          case answer of
+            "y" -> do
+              gitCheckoutBranch $ tmpBranch latestReleaseCandidate
+              gitMergeNoFF branch
+              gitRemoveBranch branch
+              let nextReleaseCandidateTag = getNextReleaseCandidateTag latestReleaseCandidate
+              gitTag $ nextReleaseCandidateTag
+              msg $ "Created new release candidate: " ++ show nextReleaseCandidateTag ++ ", you'll get it this time!"
+              gitPushTags "origin"
+              gitRemoveBranch $ tmpBranch latestReleaseCandidate
+            "n" -> do
+              msg "Keep fixing that code!"
 
       where
-        removeAllCandidateTagsForRelease :: Tag -> EWP ()
-        removeAllCandidateTagsForRelease releaseTag = do
-          tags <- gitTags
-          mapM_ (\tag -> do
-            msg $ "Removing stale release candidate tag: " ++ (show tag)
-            gitRemoveTag tag) $ getAllCandidatesForRelease releaseTag tags
-
         releaseCandidate latestReleaseCandidate = do
           gitCheckoutTag latestReleaseCandidate
           let releaseTag = getReleaseTagFromCandidate latestReleaseCandidate
           gitTag releaseTag
           gitPushTags "origin"
           msg $ "Created tag: " ++ (show releaseTag) ++ ", deploy to production cowboy!"
-
-          {- cutReleaseBranch releaseBranch -}
-          {- msg $ "Cut release branch, " ++ show releaseBranch -}
-
-          {- releaseCandidateTag <- tagReleaseCandidate -}
-          {- gitPushTags "origin" -}
-
-          {- deployTag releaseCandidateTag Preproduction -}
-          {- msg "Deployed to preproduction" -}
-
-          {- msg $ "Release candidate " ++ -}
-            {- (show releaseCandidateTag) ++ -}
-            {- " on release branch " ++ -}
-            {- (show releaseBranch) ++ -}
-            {- " has been deployed. Evaluate this release on http://preprod.gust.com." -}
-
-          where
-            -- release/1.3.0-rc2/bugs/theres-a-bug-in-the-code
-            {- releaseBranch = undefined -}
-
-            tagReleaseCandidate :: EWP Tag
-            tagReleaseCandidate = do
-              maybeTag <- (return . getNextReleaseCandidateTag <=< latestFilteredTag releaseTagFilter) <$> gitTags
-              tag <- hoistEither $ maybeToEither "Could not find latest release tag" maybeTag
-              gitTag tag
-              return tag
-
-            {- cutReleaseBranch :: Branch -> EWP () -}
-            {- cutReleaseBranch branch = do -}
-              {- maybeTag <- latestFilteredTag ciTagFilter <$> gitTags -}
-              {- tag <- hoistEither $ maybeToEither "Could not find latest green tag" maybeTag -}
-              {- gitCheckoutNewBranchFromTag branch tag -}
-
-        newCandidate latestRelease = undefined
-          {- nextReleaseCandidateTag = getNextReleaseCandidateTag latestReleaseCandidate -}
-          {- releaseCandidateTag <- tagReleaseCandidate -}
 
         msg message = lift $ tell [message]
 

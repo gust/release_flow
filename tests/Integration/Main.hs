@@ -18,9 +18,12 @@ import           Program.Release              (program)
 import           Types                        (Tag (..), Version (..))
 
 import           Integration.TestCases.Common (FakeWorldTestCase (..),
+                                               jackShit,
                                                noReleaseInProgress,
                                                releaseInProgressBad,
-                                               releaseInProgressGood)
+                                               releaseInProgressGood,
+                                               releaseInProgressBugFoundBugIsFixed,
+                                               releaseInProgressBugFoundBugIsNotFixed)
 
 makeLenses ''FakeWorldTestCase
 
@@ -29,7 +32,7 @@ makeLenses ''Output
 makeLenses ''World
 
 testCases :: [FakeWorldTestCase]
-testCases = [noReleaseInProgress, releaseInProgressGood, releaseInProgressBad]
+testCases = [jackShit, noReleaseInProgress, releaseInProgressGood, releaseInProgressBad, releaseInProgressBugFoundBugIsFixed, releaseInProgressBugFoundBugIsNotFixed]
 
 fakeWorldIntegrationTestCases :: [TestTree]
 fakeWorldIntegrationTestCases = map fakeWorldTestCase testCases

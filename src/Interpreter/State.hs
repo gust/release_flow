@@ -29,7 +29,7 @@ import           Types                      (Branch (..), Environment (..), Tag)
 
 data Input = Input {
     _iTags      :: [Tag]
-  , _iBranches  :: [(String, String)]
+  , _iBranches  :: [Branch]
   , _iUserInput :: [(String, String)]
 } deriving (Eq, Show)
 
@@ -69,19 +69,33 @@ interpret :: Program a -> ES a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
   GetLineAfterPrompt prompt f               -> getLineAfterPrompt prompt              >>= interpret . f
+  GitCreateAndCheckoutBranch branch x       -> gitCreateAndCheckoutBranch branch      >>  interpret x
+  GitCheckoutBranch branch x                -> gitCheckoutBranch branch               >>  interpret x
   GitCheckoutTag tag x                      -> gitCheckoutTag tag                     >>  interpret x
   DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
+  GitBranches f                             -> gitBranches                            >>= interpret . f
   GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
   GitPushTags remote x                      -> gitPushTags remote                     >>  interpret x
+  GitRemoveBranch branch x                  -> gitRemoveBranch branch                 >>  interpret x
   GitRemoveTag tag x                        -> gitRemoveTag tag                       >>  interpret x
   GitTag tag x                              -> gitTag tag                             >>  interpret x
+  GitMergeNoFF branch x                     -> gitMergeNoFF branch                    >>  interpret x
+  _                                         -> error "command does not match in State interpreter"
 
   where
     getLineAfterPrompt :: String -> ES String
     getLineAfterPrompt prompt = do
       w <- get
       return $ fromJust $ M.lookup prompt $ M.fromList $ w^.wInput.iUserInput
+
+    gitCheckoutBranch :: Branch -> ES ()
+    gitCheckoutBranch branch =
+      wOutput . oCommands %= (++ ["git checkout " ++ show branch])
+
+    gitCreateAndCheckoutBranch :: Branch -> ES ()
+    gitCreateAndCheckoutBranch branch =
+      wOutput . oCommands %= (++ ["git checkout -b " ++ show branch])
 
     gitCheckoutTag :: Tag -> ES ()
     gitCheckoutTag tag =
@@ -96,6 +110,12 @@ interpret (Free x) = case x of
       wOutput . oCommands %= (++ ["git tags"])
       w <- get
       return $ w^.wInput.iTags
+
+    gitBranches :: ES [Branch]
+    gitBranches = do -- git ["fetch", "--tags"] >> git ["tag"] >>= hoistEither . parsedTags
+      wOutput . oCommands %= (++ ["git branch"])
+      w <- get
+      return $ w^.wInput.iBranches
 
     gitCheckoutNewBranchFromTag :: Branch -> Tag -> ES ()
     gitCheckoutNewBranchFromTag (Branch name) tag = do -- git ["checkout", "-b", name, (show tag)] >> return ()
@@ -113,4 +133,16 @@ interpret (Free x) = case x of
     gitTag :: Tag -> ES ()
     gitTag tag = do -- git ["tag", show tag] >> return ()
       wOutput . oCommands %= (++ ["git tag " ++ show tag])
+
+
+    gitRemoveBranch :: Branch -> ES ()
+    gitRemoveBranch branch = do
+      wOutput . oCommands %= (++ ["git branch -d " ++ show branch])
+      wOutput . oCommands %= (++ ["git push origin :" ++ show branch])
+
+    gitMergeNoFF :: Branch -> ES ()
+    gitMergeNoFF branch = do
+      wOutput . oCommands %= (++ ["git merge --no-ff " ++ show branch])
+
+
 
