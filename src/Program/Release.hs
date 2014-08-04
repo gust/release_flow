@@ -53,7 +53,7 @@ determineReleaseState tags branches =
   case bugfixBranch of
     Just branch -> ReleaseInProgressBugfix latestReleaseCandidate branch
     Nothing ->
-      if latestReleaseCandidate > latestRelease 
+      if latestReleaseCandidate > latestRelease
       then ReleaseInProgress latestReleaseCandidate
       else NoReleaseInProgress latestRelease
 
@@ -98,12 +98,11 @@ program = do
         NoReleaseInProgress latestReleaseTag -> do
           -- checkout latest green build
           lastGreenTag <- hoistEither $ maybeToEither "Could not find latest green tag" $ latestFilteredTag ciTagFilter tags
+          msg $ "No outstanding release candidate found, starting new release candidate from: " ++ (show lastGreenTag)
           gitCheckoutTag lastGreenTag
-          -- tag next release candidate
           let releaseCandidateTag = getNextReleaseCandidateTag latestReleaseTag
-          msg $ "No outstanding release candidates found, starting new release candidate: " ++ (show releaseCandidateTag)
           gitTag releaseCandidateTag
-          -- push tags
+          msg $ "Started new release: " ++ show releaseCandidateTag ++ ", deploy to preproduction and confirm the release is good to go!"
           gitPushTags "origin"
         ReleaseInProgressBugfix latestReleaseCandidate branch -> do
           msg $ "Bugfix found: " ++ show branch
@@ -132,3 +131,4 @@ program = do
         msg message = lift $ tell [message]
 
         maybeToEither = flip maybe Right . Left
+

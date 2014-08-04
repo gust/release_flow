@@ -55,7 +55,8 @@ noReleaseInProgress = FakeWorldTestCase {
         , "git push origin --tags"
         ]
     , _oLog = [
-          "No outstanding release candidates found, starting new release candidate: release/1.3.0-rc1"
+          "No outstanding release candidate found, starting new release candidate from: ci/123"
+        , "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
         ]
   }
 }
