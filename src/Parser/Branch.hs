@@ -1,7 +1,7 @@
 module Parser.Branch where
 
 import Types                               (Branch(..))
-import Text.ParserCombinators.Parsec       (Parser, many, manyTill, parse, noneOf, char)
+import Text.ParserCombinators.Parsec       (Parser, many, manyTill, parse, noneOf, char, optional, spaces)
 import Text.ParserCombinators.Parsec.Error (ParseError, errorMessages,
                                             messageString)
 import Data.List                           (intercalate)
@@ -15,7 +15,7 @@ parsedBranches = convertToStringError . parse branchParser ""
     convertToStringError (Right x) = Right x
 
 branchParser :: Parser [Branch]
-branchParser = many $ Branch <$> tillEol
+branchParser = many $ ((optional $ char '*') >> spaces >> (Branch <$> tillEol))
 
 tillEol = manyTill (noneOf "\n") eol
 eol = char '\n'

@@ -27,7 +27,11 @@ jackShit = FakeWorldTestCase {
     _testDescription = "Nothing"
   , _input = defaultInput
   , _expectedOutput = initialOutput {
-      _oLog = ["No idea"]
+        _oCommands = [
+            "git tags"
+          , "git branch"
+          ]
+      , _oLog = ["Could not find latest green tag"]
     }
 }
 
