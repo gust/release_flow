@@ -12,6 +12,7 @@ import           Control.Monad.Free         (Free (..))
 import           System.Environment         (getArgs)
 import           System.Exit                (ExitCode (..))
 import           System.Process             (readProcessWithExitCode)
+import           System.IO                  (stdout, hFlush)
 
 import           Interpreter.Commands       (Interaction (..), Program)
 import           Parser.Tag                 (parsedTags)
@@ -36,12 +37,14 @@ interpret (Free x) = case x of
   GitRemoveTag tag x                        -> gitRemoveTag tag                       >>  interpret x
   GitTag tag x                              -> gitTag tag                             >>  interpret x
   GitMergeNoFF branch x                     -> gitMergeNoFF branch                    >>  interpret x
-  _                                         -> error "command does not match in IO interpreter"
+  OutputMessage message x                   -> outputMessage message                  >>  interpret x
+  _                                         -> error $ "command does not match in IO interpreter: " ++ (show x)
 
   where
     getLineAfterPrompt :: String -> EIO String
     getLineAfterPrompt prompt = liftIO $ do
-      putStrLn prompt
+      putStr $ prompt ++ " "
+      hFlush stdout
       getLine
 
     gitCheckoutTag :: Tag -> EIO ()
@@ -93,4 +96,7 @@ interpret (Free x) = case x of
       case result of
         (ExitSuccess, stdout, _)  -> return stdout
         (ExitFailure _, _, err)   -> throwT $ "Error: " ++ err
+
+    outputMessage :: String -> EIO ()
+    outputMessage = liftIO . putStrLn
 

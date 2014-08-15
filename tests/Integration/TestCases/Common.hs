@@ -31,7 +31,8 @@ jackShit = FakeWorldTestCase {
             "git tags"
           , "git branch"
           ]
-      , _oLog = ["Could not find latest green tag"]
+      , _oStdOut  = []
+      , _oLog     = ["Could not find latest green tag"]
     }
 }
 
@@ -54,10 +55,11 @@ noReleaseInProgress = FakeWorldTestCase {
         , "git tag release/1.3.0-rc1"
         , "git push origin --tags"
         ]
-    , _oLog = [
+    , _oStdOut  = [
           "No outstanding release candidate found, starting new release candidate from: ci/123"
         , "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
         ]
+    , _oLog = [ ]
   }
 }
 
@@ -71,7 +73,7 @@ releaseInProgressGood = FakeWorldTestCase {
       , CiTag      $ UnixTimeVer 123
       ]
     , _iUserInput = [
-        ("Is this release candidate good? y(es)/n(o): ", "y")
+        ("Is this release candidate good? y(es)/n(o):", "y")
       ]
     }
 
@@ -83,10 +85,11 @@ releaseInProgressGood = FakeWorldTestCase {
         , "git tag release/1.3.0"
         , "git push origin --tags"
         ]
-    , _oLog = [
+    , _oStdOut  = [
           "Release candidate found: release/1.3.0-rc2"
         , "Created tag: release/1.3.0, deploy to production cowboy!"
         ]
+    , _oLog = [ ]
   }
 }
 
@@ -101,7 +104,7 @@ releaseInProgressBad = FakeWorldTestCase {
       , CiTag      $ UnixTimeVer 123
       ]
     , _iUserInput = [
-        ("Is this release candidate good? y(es)/n(o): ", "n")
+        ("Is this release candidate good? y(es)/n(o):", "n")
       , ("What bug are you fixing? (specify dash separated descriptor, e.g. 'theres-a-bug-in-the-code'): ", "theres-a-bug-in-the-code")
       ]
     }
@@ -114,10 +117,11 @@ releaseInProgressBad = FakeWorldTestCase {
         , "git checkout -b release/1.3.0-rc2/tmp"
         , "git checkout -b release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
         ]
-    , _oLog = [
+    , _oStdOut  = [
           "Release candidate found: release/1.3.0-rc2"
         , "Created branch: release/1.3.0-rc2/bugs/theres-a-bug-in-the-code, fix your bug!"
         ]
+    , _oLog = [ ]
   }
 }
 
@@ -132,7 +136,7 @@ releaseInProgressBugFoundBugIsFixed = FakeWorldTestCase {
         Branch "release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
       ]
     , _iUserInput = [
-        ("Is the bug fixed? y(es)/n(o): ", "y")
+        ("Is the bug fixed? y(es)/n(o):", "y")
       ]
     }
 
@@ -149,10 +153,11 @@ releaseInProgressBugFoundBugIsFixed = FakeWorldTestCase {
         , "git branch -d release/1.3.0-rc2/tmp"
         , "git push origin :release/1.3.0-rc2/tmp"
         ]
-    , _oLog = [
+    , _oStdOut  = [
           "Bugfix found: release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
         , "Created new release candidate: release/1.3.0-rc3, you'll get it this time!"
         ]
+    , _oLog = [ ]
   }
 }
 
@@ -167,7 +172,7 @@ releaseInProgressBugFoundBugIsNotFixed = FakeWorldTestCase {
         Branch "release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
       ]
     , _iUserInput = [
-        ("Is the bug fixed? y(es)/n(o): ", "n")
+        ("Is the bug fixed? y(es)/n(o):", "n")
       ]
     }
 
@@ -175,10 +180,12 @@ releaseInProgressBugFoundBugIsNotFixed = FakeWorldTestCase {
       _oCommands = [
           "git tags"
         , "git branch"
+        , "git checkout release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
         ]
-    , _oLog = [
+    , _oStdOut  = [
           "Bugfix found: release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
         , "Keep fixing that code!"
         ]
+    , _oLog = [ ]
   }
 }

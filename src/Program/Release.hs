@@ -7,7 +7,7 @@ import           Control.Monad                     ((<=<))
 import           Control.Monad.Trans.Class         (lift)
 import           Control.Monad.Trans.Either        (hoistEither, runEitherT)
 import           Control.Monad.Trans.Writer.Strict (WriterT, runWriterT, tell)
-import           Data.Maybe                        (fromMaybe, listToMaybe)
+import           Data.Maybe                        (fromMaybe, fromJust, listToMaybe, isNothing)
 import           Data.List                         (isPrefixOf)
 
 import           Types                             (Branch (..),
@@ -17,6 +17,7 @@ import           Types                             (Branch (..),
                                                     tmpBranch)
 
 import           Interpreter.Commands              (EWP, Program, deployTag,
+                                                    outputMessage,
                                                     getLineAfterPrompt,
                                                     gitCheckoutNewBranchFromTag,
                                                     gitCreateAndCheckoutBranch,
@@ -83,42 +84,44 @@ program = do
       branches <- gitBranches
       case determineReleaseState tags branches of
         ReleaseInProgress latestReleaseCandidate -> do
-          msg $ "Release candidate found: " ++ (show latestReleaseCandidate)
-          answer <- getLineAfterPrompt "Is this release candidate good? y(es)/n(o): "
-          case answer of
-            "y" -> releaseCandidate latestReleaseCandidate
-            "n" -> do
+          outputMessage $ "Release candidate found: " ++ (show latestReleaseCandidate)
+          yesOrNo <- promptForYesOrNo "Is this release candidate good? y(es)/n(o):"
+          case yesOrNo of
+            True -> releaseCandidate latestReleaseCandidate
+            False -> do
               bugBranchName <- getLineAfterPrompt "What bug are you fixing? (specify dash separated descriptor, e.g. 'theres-a-bug-in-the-code'): "
               let bugFixBranch = Branch ((show latestReleaseCandidate) ++ "/bugs/" ++ bugBranchName)
               gitCheckoutTag latestReleaseCandidate
               gitCreateAndCheckoutBranch $ tmpBranch latestReleaseCandidate
               gitCreateAndCheckoutBranch bugFixBranch
-              msg $ "Created branch: " ++ (show bugFixBranch) ++ ", fix your bug!"
-            _ -> return ()
+              outputMessage $ "Created branch: " ++ (show bugFixBranch) ++ ", fix your bug!"
+
         NoReleaseInProgress latestReleaseTag -> do
           -- checkout latest green build
           lastGreenTag <- hoistEither $ maybeToEither "Could not find latest green tag" $ latestFilteredTag ciTagFilter tags
-          msg $ "No outstanding release candidate found, starting new release candidate from: " ++ (show lastGreenTag)
+          outputMessage $ "No outstanding release candidate found, starting new release candidate from: " ++ (show lastGreenTag)
           gitCheckoutTag lastGreenTag
           let releaseCandidateTag = getNextReleaseCandidateTag latestReleaseTag
           gitTag releaseCandidateTag
-          msg $ "Started new release: " ++ show releaseCandidateTag ++ ", deploy to preproduction and confirm the release is good to go!"
+          outputMessage $ "Started new release: " ++ show releaseCandidateTag ++ ", deploy to preproduction and confirm the release is good to go!"
           gitPushTags "origin"
+
         ReleaseInProgressBugfix latestReleaseCandidate branch -> do
-          msg $ "Bugfix found: " ++ show branch
-          answer <- getLineAfterPrompt "Is the bug fixed? y(es)/n(o): "
-          case answer of
-            "y" -> do
+          outputMessage $ "Bugfix found: " ++ show branch
+          yesOrNo <- promptForYesOrNo "Is the bug fixed? y(es)/n(o):"
+          case yesOrNo of
+            True -> do
               gitCheckoutBranch $ tmpBranch latestReleaseCandidate
               gitMergeNoFF branch
               gitRemoveBranch branch
               let nextReleaseCandidateTag = getNextReleaseCandidateTag latestReleaseCandidate
               gitTag $ nextReleaseCandidateTag
-              msg $ "Created new release candidate: " ++ show nextReleaseCandidateTag ++ ", you'll get it this time!"
+              outputMessage $ "Created new release candidate: " ++ show nextReleaseCandidateTag ++ ", you'll get it this time!"
               gitPushTags "origin"
               gitRemoveBranch $ tmpBranch latestReleaseCandidate
-            "n" -> do
-              msg "Keep fixing that code!"
+            False -> do
+              gitCheckoutBranch branch
+              outputMessage "Keep fixing that code!"
 
       where
         releaseCandidate latestReleaseCandidate = do
@@ -126,9 +129,18 @@ program = do
           let releaseTag = getReleaseTagFromCandidate latestReleaseCandidate
           gitTag releaseTag
           gitPushTags "origin"
-          msg $ "Created tag: " ++ (show releaseTag) ++ ", deploy to production cowboy!"
-
-        msg message = lift $ tell [message]
+          outputMessage $ "Created tag: " ++ (show releaseTag) ++ ", deploy to production cowboy!"
 
         maybeToEither = flip maybe Right . Left
+
+        promptForYesOrNo :: String -> EWP Bool
+        promptForYesOrNo prompt = do
+          parseYesOrNo <$> (getLineAfterPrompt prompt) >>= (\answer -> if isNothing answer then promptForYesOrNo prompt else return $ fromJust answer)
+
+        parseYesOrNo :: String -> Maybe Bool
+        parseYesOrNo "y"   = Just True
+        parseYesOrNo "yes" = Just True
+        parseYesOrNo "n"   = Just False
+        parseYesOrNo "no"  = Just False
+        parseYesOrNo  _    = Nothing
 

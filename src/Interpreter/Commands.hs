@@ -17,6 +17,7 @@ module Interpreter.Commands (
   , gitRemoveBranch
   , gitMergeNoFF
   , gitTag
+  , outputMessage
   ) where
 
 import           Control.Monad.Free
@@ -42,10 +43,28 @@ data Interaction x
   | GitRemoveBranch Branch x
   | GitTag Tag x
   | GitMergeNoFF Branch x
+  | OutputMessage String x
   deriving Functor
+
+instance Show (Interaction x) where
+  show (GetLineAfterPrompt _ _) = "GetLineAfterPrompt"
+  show (DeployTag _ _ _) = "DeployTag"
+  show (GitCreateAndCheckoutBranch _ _) = "GitCreateAndCheckoutBranch"
+  show (GitCheckoutBranch _ _) = "GitCheckoutBranch"
+  show (GitCheckoutTag _ _) = "GitCheckoutTag"
+  show (GitTags _) = "GitTags"
+  show (GitBranches _) = "GitBranches"
+  show (GitCheckoutNewBranchFromTag _ _ _) = "GitCheckoutNewBranchFromTag"
+  show (GitPushTags _ _) = "GitPushTags"
+  show (GitRemoveTag _ _) = "GitRemoveTag"
+  show (GitRemoveBranch _ _) = "GitRemoveBranch"
+  show (GitTag _ _) = "GitTag"
+  show (GitMergeNoFF _ _) = "GitMergeNoFF"
+  show (OutputMessage _ _) = "OutputMessage"
 
 type Program = Free Interaction
 type EWP =  EitherT String (WriterT [String] Program)
+
 
 getLineAfterPrompt :: String -> EWP String
 getLineAfterPrompt prompt = lift $ liftF $ GetLineAfterPrompt prompt id
@@ -86,3 +105,8 @@ gitRemoveBranch branch = lift $ liftF $ GitRemoveBranch branch ()
 
 gitMergeNoFF :: Branch -> EWP ()
 gitMergeNoFF branch = lift $ liftF $ GitMergeNoFF branch ()
+
+outputMessage :: String -> EWP ()
+outputMessage message = lift $ liftF $ OutputMessage message ()
+
+

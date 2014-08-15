@@ -34,13 +34,14 @@ data Input = Input {
 } deriving (Eq, Show)
 
 data Output = Output {
-    _oCommands :: [String]
-  , _oLog      :: [String]
+    _oCommands  :: [String]
+  , _oStdOut    :: [String]
+  , _oLog       :: [String]
 } deriving (Eq, Show)
 
 data World = World {
-    _wInput  :: Input
-  , _wOutput :: Output
+    _wInput     :: Input
+  , _wOutput    :: Output
 } deriving (Eq, Show)
 
 defaultInput = Input {
@@ -50,8 +51,9 @@ defaultInput = Input {
 }
 
 initialOutput = Output {
-    _oCommands = []
-  , _oLog      = []
+    _oCommands  = []
+  , _oStdOut    = []
+  , _oLog       = []
 }
 
 defaultWorld = World {
@@ -81,7 +83,8 @@ interpret (Free x) = case x of
   GitRemoveTag tag x                        -> gitRemoveTag tag                       >>  interpret x
   GitTag tag x                              -> gitTag tag                             >>  interpret x
   GitMergeNoFF branch x                     -> gitMergeNoFF branch                    >>  interpret x
-  _                                         -> error "command does not match in State interpreter"
+  OutputMessage message x                   -> outputMessage message                  >>  interpret x
+  _                                         -> error $ "command does not match in State interpreter: " ++ (show x)
 
   where
     getLineAfterPrompt :: String -> ES String
@@ -145,4 +148,6 @@ interpret (Free x) = case x of
       wOutput . oCommands %= (++ ["git merge --no-ff " ++ show branch])
 
 
+    outputMessage :: String -> ES ()
+    outputMessage message = wOutput . oStdOut %= (++ [message])
 
