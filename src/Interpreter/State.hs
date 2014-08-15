@@ -74,7 +74,6 @@ interpret (Free x) = case x of
   GitCreateAndCheckoutBranch branch x       -> gitCreateAndCheckoutBranch branch      >>  interpret x
   GitCheckoutBranch branch x                -> gitCheckoutBranch branch               >>  interpret x
   GitCheckoutTag tag x                      -> gitCheckoutTag tag                     >>  interpret x
-  DeployTag tag env x                       -> deployTag tag env                      >>  interpret x
   GitTags f                                 -> gitTags                                >>= interpret . f
   GitBranches f                             -> gitBranches                            >>= interpret . f
   GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
@@ -103,10 +102,6 @@ interpret (Free x) = case x of
     gitCheckoutTag :: Tag -> ES ()
     gitCheckoutTag tag =
       wOutput . oCommands %= (++ ["git checkout " ++ show tag])
-
-    deployTag :: Tag -> Environment -> ES ()
-    deployTag tag env = do -- executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
-      wOutput . oCommands %= (++ ["deploy " ++ show tag])
 
     gitTags :: ES [Tag]
     gitTags = do -- git ["fetch", "--tags"] >> git ["tag"] >>= hoistEither . parsedTags

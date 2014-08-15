@@ -84,6 +84,7 @@ releaseInProgressGood = FakeWorldTestCase {
         , "git checkout release/1.3.0-rc2"
         , "git tag release/1.3.0"
         , "git push origin --tags"
+        , "git checkout release/1.3.0"
         ]
     , _oStdOut  = [
           "Release candidate found: release/1.3.0-rc2"
@@ -150,6 +151,7 @@ releaseInProgressBugFoundBugIsFixed = FakeWorldTestCase {
         , "git push origin :release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
         , "git tag release/1.3.0-rc3"
         , "git push origin --tags"
+        , "git checkout release/1.3.0-rc3"
         , "git branch -d release/1.3.0-rc2/tmp"
         , "git push origin :release/1.3.0-rc2/tmp"
         ]

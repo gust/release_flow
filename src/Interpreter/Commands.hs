@@ -5,7 +5,6 @@ module Interpreter.Commands (
   , Program
   , EP
   , getLineAfterPrompt
-  , deployTag
   , gitCreateAndCheckoutBranch
   , gitCheckoutBranch
   , gitCheckoutTag
@@ -31,7 +30,6 @@ import           Types                             (Branch (..), Environment,
 
 data Interaction x
   = GetLineAfterPrompt String (String -> x)
-  | DeployTag Tag Environment x
   | GitCreateAndCheckoutBranch Branch x
   | GitCheckoutBranch Branch x
   | GitCheckoutTag Tag x
@@ -47,20 +45,19 @@ data Interaction x
   deriving Functor
 
 instance Show (Interaction x) where
-  show (GetLineAfterPrompt _ _) = "GetLineAfterPrompt"
-  show (DeployTag _ _ _) = "DeployTag"
-  show (GitCreateAndCheckoutBranch _ _) = "GitCreateAndCheckoutBranch"
-  show (GitCheckoutBranch _ _) = "GitCheckoutBranch"
-  show (GitCheckoutTag _ _) = "GitCheckoutTag"
-  show (GitTags _) = "GitTags"
-  show (GitBranches _) = "GitBranches"
+  show (GetLineAfterPrompt _ _)            = "GetLineAfterPrompt"
+  show (GitCreateAndCheckoutBranch _ _)    = "GitCreateAndCheckoutBranch"
+  show (GitCheckoutBranch _ _)             = "GitCheckoutBranch"
+  show (GitCheckoutTag _ _)                = "GitCheckoutTag"
+  show (GitTags _)                         = "GitTags"
+  show (GitBranches _)                     = "GitBranches"
   show (GitCheckoutNewBranchFromTag _ _ _) = "GitCheckoutNewBranchFromTag"
-  show (GitPushTags _ _) = "GitPushTags"
-  show (GitRemoveTag _ _) = "GitRemoveTag"
-  show (GitRemoveBranch _ _) = "GitRemoveBranch"
-  show (GitTag _ _) = "GitTag"
-  show (GitMergeNoFF _ _) = "GitMergeNoFF"
-  show (OutputMessage _ _) = "OutputMessage"
+  show (GitPushTags _ _)                   = "GitPushTags"
+  show (GitRemoveTag _ _)                  = "GitRemoveTag"
+  show (GitRemoveBranch _ _)               = "GitRemoveBranch"
+  show (GitTag _ _)                        = "GitTag"
+  show (GitMergeNoFF _ _)                  = "GitMergeNoFF"
+  show (OutputMessage _ _)                 = "OutputMessage"
 
 type Program = Free Interaction
 type EP = EitherT ReleaseError Program
@@ -77,9 +74,6 @@ gitCheckoutBranch branch = lift $ liftF $ GitCheckoutBranch branch ()
 
 gitCheckoutTag :: Tag -> EP ()
 gitCheckoutTag tag = lift $ liftF $ GitCheckoutTag tag ()
-
-deployTag :: Tag -> Environment -> EP ()
-deployTag tag env = lift $ liftF $ DeployTag tag env ()
 
 gitTags :: EP [Tag]
 gitTags = lift $ liftF $ GitTags id
@@ -98,7 +92,6 @@ gitRemoveTag tag = lift $ liftF $ GitRemoveTag tag ()
 
 gitTag :: Tag -> EP ()
 gitTag tag = lift $ liftF $ GitTag tag ()
-
 
 gitRemoveBranch :: Branch -> EP ()
 gitRemoveBranch branch = lift $ liftF $ GitRemoveBranch branch ()

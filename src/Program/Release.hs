@@ -16,7 +16,7 @@ import           Types                             (Branch (..),
                                                     tmpBranch,
                                                     ReleaseError(..))
 
-import           Interpreter.Commands              (EP, Program, deployTag,
+import           Interpreter.Commands              (EP, Program,
                                                     outputMessage,
                                                     getLineAfterPrompt,
                                                     gitCheckoutNewBranchFromTag,
@@ -113,6 +113,7 @@ program = do
               gitTag $ nextReleaseCandidateTag
               outputMessage $ "Created new release candidate: " ++ show nextReleaseCandidateTag ++ ", you'll get it this time!"
               gitPushTags "origin"
+              gitCheckoutTag nextReleaseCandidateTag
               gitRemoveBranch $ tmpBranch latestReleaseCandidate
             False -> do
               gitCheckoutBranch branch
@@ -124,6 +125,7 @@ program = do
           let releaseTag = getReleaseTagFromCandidate latestReleaseCandidate
           gitTag releaseTag
           gitPushTags "origin"
+          gitCheckoutTag releaseTag
           outputMessage $ "Created tag: " ++ (show releaseTag) ++ ", deploy to production cowboy!"
 
         maybeToEither = flip maybe Right . Left
