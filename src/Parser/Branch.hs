@@ -7,12 +7,12 @@ import Text.ParserCombinators.Parsec.Error (ParseError, errorMessages,
 import Data.List                           (intercalate)
 import Control.Applicative ((<$>))
 
-parsedBranches :: String -> Either String [Branch]
-parsedBranches = convertToStringError . parse branchParser ""
+parsedBranches :: String -> [Branch]
+parsedBranches = handleError . parse branchParser ""
   where
-    convertToStringError :: Either ParseError a -> Either String a
-    convertToStringError (Left parseError) = Left $ intercalate ", " $ map messageString $ errorMessages parseError
-    convertToStringError (Right x) = Right x
+    handleError :: Either ParseError a -> a
+    handleError (Left parseError) = error $ show parseError
+    handleError (Right x) = x
 
 branchParser :: Parser [Branch]
 branchParser = many $ ((optional $ char '*') >> spaces >> (Branch <$> tillEol))

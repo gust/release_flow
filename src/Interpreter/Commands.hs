@@ -3,7 +3,7 @@
 module Interpreter.Commands (
     Interaction(..)
   , Program
-  , EWP
+  , EP
   , getLineAfterPrompt
   , deployTag
   , gitCreateAndCheckoutBranch
@@ -27,7 +27,7 @@ import           Control.Monad.Trans.Either        (EitherT)
 import           Control.Monad.Trans.Writer.Strict (WriterT)
 
 import           Types                             (Branch (..), Environment,
-                                                    Tag (..))
+                                                    Tag (..), ReleaseError(..))
 
 data Interaction x
   = GetLineAfterPrompt String (String -> x)
@@ -63,50 +63,50 @@ instance Show (Interaction x) where
   show (OutputMessage _ _) = "OutputMessage"
 
 type Program = Free Interaction
-type EWP =  EitherT String (WriterT [String] Program)
+type EP = EitherT ReleaseError Program
 
 
-getLineAfterPrompt :: String -> EWP String
+getLineAfterPrompt :: String -> EP String
 getLineAfterPrompt prompt = lift $ liftF $ GetLineAfterPrompt prompt id
 
-gitCreateAndCheckoutBranch :: Branch -> EWP ()
+gitCreateAndCheckoutBranch :: Branch -> EP ()
 gitCreateAndCheckoutBranch branch = lift $ liftF $ GitCreateAndCheckoutBranch branch ()
 
-gitCheckoutBranch :: Branch -> EWP ()
+gitCheckoutBranch :: Branch -> EP ()
 gitCheckoutBranch branch = lift $ liftF $ GitCheckoutBranch branch ()
 
-gitCheckoutTag :: Tag -> EWP ()
+gitCheckoutTag :: Tag -> EP ()
 gitCheckoutTag tag = lift $ liftF $ GitCheckoutTag tag ()
 
-deployTag :: Tag -> Environment -> EWP ()
+deployTag :: Tag -> Environment -> EP ()
 deployTag tag env = lift $ liftF $ DeployTag tag env ()
 
-gitTags :: EWP [Tag]
+gitTags :: EP [Tag]
 gitTags = lift $ liftF $ GitTags id
 
-gitBranches :: EWP [Branch]
+gitBranches :: EP [Branch]
 gitBranches = lift $ liftF $ GitBranches id
 
-gitCheckoutNewBranchFromTag :: Branch -> Tag -> EWP ()
+gitCheckoutNewBranchFromTag :: Branch -> Tag -> EP ()
 gitCheckoutNewBranchFromTag branch tag = lift $ liftF $ GitCheckoutNewBranchFromTag branch tag ()
 
-gitPushTags :: String -> EWP ()
+gitPushTags :: String -> EP ()
 gitPushTags remote = lift $ liftF $ GitPushTags remote ()
 
-gitRemoveTag :: Tag -> EWP ()
+gitRemoveTag :: Tag -> EP ()
 gitRemoveTag tag = lift $ liftF $ GitRemoveTag tag ()
 
-gitTag :: Tag -> EWP ()
+gitTag :: Tag -> EP ()
 gitTag tag = lift $ liftF $ GitTag tag ()
 
 
-gitRemoveBranch :: Branch -> EWP ()
+gitRemoveBranch :: Branch -> EP ()
 gitRemoveBranch branch = lift $ liftF $ GitRemoveBranch branch ()
 
-gitMergeNoFF :: Branch -> EWP ()
+gitMergeNoFF :: Branch -> EP ()
 gitMergeNoFF branch = lift $ liftF $ GitMergeNoFF branch ()
 
-outputMessage :: String -> EWP ()
+outputMessage :: String -> EP ()
 outputMessage message = lift $ liftF $ OutputMessage message ()
 
 

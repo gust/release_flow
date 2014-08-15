@@ -14,7 +14,7 @@ import           Interpreter.State            (Input (..), Output (..),
                                                World (..), defaultInput,
                                                defaultWorld, initialOutput,
                                                interpret)
-import           Program.Release              (program)
+import           Program.Release              (program, runProgram)
 import           Types                        (Tag (..), Version (..))
 
 import           Integration.TestCases.Common (FakeWorldTestCase (..),
@@ -53,10 +53,8 @@ fakeWorldTestCase tc = testCase (tc^.testDescription) $
                 }
 
                 stateInterpretation :: State World ()
-                stateInterpretation = do
-                  eitherResult <- runEitherT $ interpret program
-                  logMessages $ either (:[]) id eitherResult
+                stateInterpretation = runProgram interpret program >>= either (logError . show) return
 
-                logMessages :: [String] -> State World ()
-                logMessages e = wOutput.oLog %= (\message -> e ++ message)
+                logError :: String -> State World ()
+                logError msg = wOutput.oStdErr %= (\existing -> existing ++ [msg])
 

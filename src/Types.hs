@@ -74,3 +74,8 @@ data ReleaseState = NoReleaseInProgress Tag
   | ReleaseInProgress Tag 
   | ReleaseInProgressBugfix Tag Branch 
   deriving (Eq, Show)
+
+data ReleaseError = ExecutionError String | ProgramExpectationError String
+instance Show ReleaseError where
+  show (ExecutionError msg) = "Interpreter Error: " ++ msg
+  show (ProgramExpectationError msg)     = "Program Error: " ++ msg

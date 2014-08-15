@@ -32,7 +32,7 @@ jackShit = FakeWorldTestCase {
           , "git branch"
           ]
       , _oStdOut  = []
-      , _oLog     = ["Could not find latest green tag"]
+      , _oStdErr  = ["Program Error: Could not find latest green tag"]
     }
 }
 
@@ -59,7 +59,7 @@ noReleaseInProgress = FakeWorldTestCase {
           "No outstanding release candidate found, starting new release candidate from: ci/123"
         , "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
         ]
-    , _oLog = [ ]
+    , _oStdErr = [ ]
   }
 }
 
@@ -89,7 +89,7 @@ releaseInProgressGood = FakeWorldTestCase {
           "Release candidate found: release/1.3.0-rc2"
         , "Created tag: release/1.3.0, deploy to production cowboy!"
         ]
-    , _oLog = [ ]
+    , _oStdErr = [ ]
   }
 }
 
@@ -121,7 +121,7 @@ releaseInProgressBad = FakeWorldTestCase {
           "Release candidate found: release/1.3.0-rc2"
         , "Created branch: release/1.3.0-rc2/bugs/theres-a-bug-in-the-code, fix your bug!"
         ]
-    , _oLog = [ ]
+    , _oStdErr = [ ]
   }
 }
 
@@ -157,7 +157,7 @@ releaseInProgressBugFoundBugIsFixed = FakeWorldTestCase {
           "Bugfix found: release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
         , "Created new release candidate: release/1.3.0-rc3, you'll get it this time!"
         ]
-    , _oLog = [ ]
+    , _oStdErr = [ ]
   }
 }
 
@@ -186,6 +186,6 @@ releaseInProgressBugFoundBugIsNotFixed = FakeWorldTestCase {
           "Bugfix found: release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
         , "Keep fixing that code!"
         ]
-    , _oLog = [ ]
+    , _oStdErr = [ ]
   }
 }

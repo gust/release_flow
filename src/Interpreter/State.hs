@@ -25,7 +25,7 @@ import           Control.Lens               (makeLenses, (%=), (^.))
 import           Data.Functor               ((<$>))
 import           Interpreter.Commands       (Interaction (..), Program)
 import           Parser.Tag                 (parsedTags)
-import           Types                      (Branch (..), Environment (..), Tag)
+import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..))
 
 data Input = Input {
     _iTags      :: [Tag]
@@ -36,7 +36,7 @@ data Input = Input {
 data Output = Output {
     _oCommands  :: [String]
   , _oStdOut    :: [String]
-  , _oLog       :: [String]
+  , _oStdErr    :: [String]
 } deriving (Eq, Show)
 
 data World = World {
@@ -53,7 +53,7 @@ defaultInput = Input {
 initialOutput = Output {
     _oCommands  = []
   , _oStdOut    = []
-  , _oLog       = []
+  , _oStdErr    = []
 }
 
 defaultWorld = World {
@@ -65,7 +65,7 @@ makeLenses ''Input
 makeLenses ''Output
 makeLenses ''World
 
-type ES = EitherT String (State World)
+type ES = EitherT ReleaseError (State World)
 
 interpret :: Program a -> ES a
 interpret (Pure r) = return r
@@ -84,7 +84,7 @@ interpret (Free x) = case x of
   GitTag tag x                              -> gitTag tag                             >>  interpret x
   GitMergeNoFF branch x                     -> gitMergeNoFF branch                    >>  interpret x
   OutputMessage message x                   -> outputMessage message                  >>  interpret x
-  _                                         -> error $ "command does not match in State interpreter: " ++ (show x)
+  _                                         -> error $ "Interpreter Error: no match for command in State interpreter: " ++ (show x)
 
   where
     getLineAfterPrompt :: String -> ES String
@@ -137,7 +137,6 @@ interpret (Free x) = case x of
     gitTag tag = do -- git ["tag", show tag] >> return ()
       wOutput . oCommands %= (++ ["git tag " ++ show tag])
 
-
     gitRemoveBranch :: Branch -> ES ()
     gitRemoveBranch branch = do
       wOutput . oCommands %= (++ ["git branch -d " ++ show branch])
@@ -146,7 +145,6 @@ interpret (Free x) = case x of
     gitMergeNoFF :: Branch -> ES ()
     gitMergeNoFF branch = do
       wOutput . oCommands %= (++ ["git merge --no-ff " ++ show branch])
-
 
     outputMessage :: String -> ES ()
     outputMessage message = wOutput . oStdOut %= (++ [message])

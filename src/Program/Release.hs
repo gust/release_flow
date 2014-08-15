@@ -1,12 +1,11 @@
 {-# LANGUAGE MultiWayIf #-}
 
-module Program.Release (program, determineReleaseState) where
+module Program.Release (program, determineReleaseState, runProgram) where
 
 import           Control.Applicative               ((<$>))
 import           Control.Monad                     ((<=<))
 import           Control.Monad.Trans.Class         (lift)
-import           Control.Monad.Trans.Either        (hoistEither, runEitherT)
-import           Control.Monad.Trans.Writer.Strict (WriterT, runWriterT, tell)
+import           Control.Monad.Trans.Either        (hoistEither, runEitherT, EitherT(..))
 import           Data.Maybe                        (fromMaybe, fromJust, listToMaybe, isNothing)
 import           Data.List                         (isPrefixOf)
 
@@ -14,9 +13,10 @@ import           Types                             (Branch (..),
                                                     Environment (..),
                                                     ReleaseState (..), Tag (..),
                                                     Version (..),
-                                                    tmpBranch)
+                                                    tmpBranch,
+                                                    ReleaseError(..))
 
-import           Interpreter.Commands              (EWP, Program, deployTag,
+import           Interpreter.Commands              (EP, Program, deployTag,
                                                     outputMessage,
                                                     getLineAfterPrompt,
                                                     gitCheckoutNewBranchFromTag,
@@ -38,8 +38,13 @@ import           Tags                              (ciTagFilter,
                                                     releaseCandidateTagFilter,
                                                     releaseTagFilter)
 
+runProgram :: (Monad m, Functor m) => (Program (Either ReleaseError b) -> (EitherT ReleaseError m (Either ReleaseError b))) -> Program (Either ReleaseError b) -> m (Either ReleaseError b)
+runProgram interpreter program =
+  collapseErrors <$> (runEitherT $ interpreter program)
+  where
+    collapseErrors :: (Either ReleaseError (Either ReleaseError b)) -> (Either ReleaseError b)
+    collapseErrors = (>>= id)
 
-{- TODO: need to handle the case where one of these tags does not exist -}
 determineReleaseState :: [Tag] -> [Branch] -> ReleaseState
 determineReleaseState tags branches =
   let
@@ -63,22 +68,12 @@ findReleaseCandidateBugfixBranch :: Tag -> [Branch] -> Maybe Branch
 findReleaseCandidateBugfixBranch releaseCandidateTag = 
   listToMaybe . filter (isPrefixOf ((show releaseCandidateTag) ++ "/bugs") . show)
 
-program :: Program [String]
+program :: Program (Either ReleaseError ())
 program = do
-  -- strip WriterT by returning its accumulated logs
-  snd <$> runWriterT tellErrors
+  runEitherT release
 
   where
-    tellErrors :: WriterT [String] Program ()
-    tellErrors = do
-      -- strip EitherT by just shoving the error message (in case of error) into the underlying writer transformer
-      eitherResult <- runEitherT release
-      either
-        (tell . (:[]))
-        return
-        eitherResult
-
-    release :: EWP ()
+    release :: EP ()
     release = do
       tags <- gitTags
       branches <- gitBranches
@@ -98,7 +93,7 @@ program = do
 
         NoReleaseInProgress latestReleaseTag -> do
           -- checkout latest green build
-          lastGreenTag <- hoistEither $ maybeToEither "Could not find latest green tag" $ latestFilteredTag ciTagFilter tags
+          lastGreenTag <- hoistEither $ maybeToEither (ProgramExpectationError "Could not find latest green tag") $ latestFilteredTag ciTagFilter tags
           outputMessage $ "No outstanding release candidate found, starting new release candidate from: " ++ (show lastGreenTag)
           gitCheckoutTag lastGreenTag
           let releaseCandidateTag = getNextReleaseCandidateTag latestReleaseTag
@@ -133,7 +128,7 @@ program = do
 
         maybeToEither = flip maybe Right . Left
 
-        promptForYesOrNo :: String -> EWP Bool
+        promptForYesOrNo :: String -> EP Bool
         promptForYesOrNo prompt = do
           parseYesOrNo <$> (getLineAfterPrompt prompt) >>= (\answer -> if isNothing answer then promptForYesOrNo prompt else return $ fromJust answer)
 

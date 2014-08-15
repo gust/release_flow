@@ -17,11 +17,11 @@ import           System.IO                  (stdout, hFlush)
 import           Interpreter.Commands       (Interaction (..), Program)
 import           Parser.Tag                 (parsedTags)
 import           Parser.Branch              (parsedBranches)
-import           Types                      (Branch (..), Environment (..), Tag)
+import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..))
 
-type EIO = EitherT String IO
+type EIO = EitherT ReleaseError IO
 
-interpret :: Program a -> EitherT String IO a
+interpret :: Program a -> EIO a
 interpret (Pure r) = return r
 interpret (Free x) = case x of
   GetLineAfterPrompt prompt f               -> getLineAfterPrompt prompt              >>= interpret . f
@@ -38,7 +38,7 @@ interpret (Free x) = case x of
   GitTag tag x                              -> gitTag tag                             >>  interpret x
   GitMergeNoFF branch x                     -> gitMergeNoFF branch                    >>  interpret x
   OutputMessage message x                   -> outputMessage message                  >>  interpret x
-  _                                         -> error $ "command does not match in IO interpreter: " ++ (show x)
+  _                                         -> error $ "Interpreter Error: no match for command in IO interpreter: " ++ (show x)
 
   where
     getLineAfterPrompt :: String -> EIO String
@@ -57,13 +57,13 @@ interpret (Free x) = case x of
     gitCreateAndCheckoutBranch branch = git ["checkout", "-b", (show branch)] >> return ()
 
     gitBranches :: EIO [Branch]
-    gitBranches = git ["branch"] >>= hoistEither . parsedBranches
+    gitBranches = parsedBranches <$> git ["branch"]
 
     deployTag :: Tag -> Environment -> EIO ()
     deployTag tag env = executeExternal "DEPLOY_MIGRATIONS=true rake" [show env, "deploy:force[" ++ show tag ++ "]"] >> return ()
 
     gitTags :: EIO [Tag]
-    gitTags = git ["fetch", "--tags"] >> git ["tag"] >>= hoistEither . parsedTags
+    gitTags = parsedTags <$> (git ["fetch", "--tags"] >> git ["tag"])
 
     gitCheckoutNewBranchFromTag :: Branch -> Tag -> EIO ()
     gitCheckoutNewBranchFromTag (Branch name) tag = git ["checkout", "-b", name, (show tag)] >> return ()
@@ -95,7 +95,7 @@ interpret (Free x) = case x of
       result <- liftIO $ readProcessWithExitCode cmd args ""
       case result of
         (ExitSuccess, stdout, _)  -> return stdout
-        (ExitFailure _, _, err)   -> throwT $ "Error: " ++ err
+        (ExitFailure _, _, err)   -> throwT $ ExecutionError err
 
     outputMessage :: String -> EIO ()
     outputMessage = liftIO . putStrLn
