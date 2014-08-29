@@ -1,7 +1,8 @@
 module Integration.TestCases.Common
   (
     jackShit
-  , noReleaseInProgress
+  , noReleaseInProgressStartRelease
+  , noReleaseInProgressStartHotfix
   , releaseInProgressGood
   , releaseInProgressBad
   , releaseInProgressBugFoundBugIsFixed
@@ -25,25 +26,36 @@ data FakeWorldTestCase = FakeWorldTestCase {
 
 jackShit = FakeWorldTestCase {
     _testDescription = "Nothing"
-  , _input = defaultInput
-  , _expectedOutput = initialOutput {
-        _oCommands = [
-            "git tags"
-          , "git branch"
-          ]
-      , _oStdOut  = []
-      , _oStdErr  = ["Program Error: Could not find latest green tag"]
+  , _input = defaultInput {
+      _iUserInput = [
+        ("Choose your adventure: Start new release (0), Start hotfix (1)", "0")
+      ]
     }
-}
+  , _expectedOutput = initialOutput {
+      _oCommands = [
+          "git tags"
+        , "git branch"
+        ]
+    , _oStdOut  = []
+    , _oStdErr  = ["Program Error: Could not find latest green tag"]
+    }
+  }
 
-noReleaseInProgress = FakeWorldTestCase {
+noReleaseInProgressInput = defaultInput {
+    _iTags = [
+      ReleaseCandidateTag (SemVer 1 2 3) 3
+    , ReleaseTag $ SemVer 1 2 3
+    , CiTag      $ UnixTimeVer 123
+    ]
+  }
+
+
+noReleaseInProgressStartRelease = FakeWorldTestCase {
     _testDescription = "No release in progress, start a new release"
 
-  , _input = defaultInput {
-      _iTags = [
-        ReleaseCandidateTag (SemVer 1 2 3) 3
-      , ReleaseTag $ SemVer 1 2 3
-      , CiTag      $ UnixTimeVer 123
+  , _input = noReleaseInProgressInput {
+      _iUserInput = [
+        ("Choose your adventure: Start new release (0), Start hotfix (1)", "0")
       ]
     }
 
@@ -56,8 +68,31 @@ noReleaseInProgress = FakeWorldTestCase {
         , "git push origin --tags"
         ]
     , _oStdOut  = [
-          "No outstanding release candidate found, starting new release candidate from: ci/123"
-        , "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
+          "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
+        ]
+    , _oStdErr = [ ]
+    }
+}
+
+noReleaseInProgressStartHotfix = FakeWorldTestCase {
+    _testDescription = "No release in progress, start a hotfix"
+
+  , _input = noReleaseInProgressInput {
+      _iUserInput = [
+        ("Choose your adventure: Start new release (0), Start hotfix (1)", "1")
+      , ("What is the hotfix for? (specify dash separated descriptor, e.g. 'signup-is-broken')", "hot-fixing")
+      ]
+    }
+
+  , _expectedOutput = initialOutput {
+      _oCommands = [
+          "git tags"
+        , "git branch"
+        , "git checkout release/1.2.3"
+        , "git checkout -b release/1.2.3/hotfix/hot-fixing"
+        ]
+    , _oStdOut  = [
+          "Started hotfix: release/1.2.3/hotfix/hot-fixing, fix stuff!"
         ]
     , _oStdErr = [ ]
   }
@@ -73,7 +108,7 @@ releaseInProgressGood = FakeWorldTestCase {
       , CiTag      $ UnixTimeVer 123
       ]
     , _iUserInput = [
-        ("Is this release candidate good? y(es)/n(o):", "y")
+        ("Is this release candidate good? y(es)/n(o)", "y")
       ]
     }
 
@@ -105,8 +140,8 @@ releaseInProgressBad = FakeWorldTestCase {
       , CiTag      $ UnixTimeVer 123
       ]
     , _iUserInput = [
-        ("Is this release candidate good? y(es)/n(o):", "n")
-      , ("What bug are you fixing? (specify dash separated descriptor, e.g. 'theres-a-bug-in-the-code'): ", "theres-a-bug-in-the-code")
+        ("Is this release candidate good? y(es)/n(o)", "n")
+      , ("What bug are you fixing? (specify dash separated descriptor, e.g. 'theres-a-bug-in-the-code')", "theres-a-bug-in-the-code")
       ]
     }
 
@@ -137,7 +172,7 @@ releaseInProgressBugFoundBugIsFixed = FakeWorldTestCase {
         Branch "release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
       ]
     , _iUserInput = [
-        ("Is the bug fixed? y(es)/n(o):", "y")
+        ("Is the bug fixed? y(es)/n(o)", "y")
       ]
     }
 
@@ -174,7 +209,7 @@ releaseInProgressBugFoundBugIsNotFixed = FakeWorldTestCase {
         Branch "release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
       ]
     , _iUserInput = [
-        ("Is the bug fixed? y(es)/n(o):", "n")
+        ("Is the bug fixed? y(es)/n(o)", "n")
       ]
     }
 
@@ -191,3 +226,4 @@ releaseInProgressBugFoundBugIsNotFixed = FakeWorldTestCase {
     , _oStdErr = [ ]
   }
 }
+

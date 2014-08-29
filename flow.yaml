@@ -26,7 +26,7 @@ tests:
 
       - name: Hotfix Completed
         spec:
-          input: 
+          input:
             userInput:
               - question: "Choose your adventure: Start new release (0), Start hotfix (1)"
                 answer: "0"

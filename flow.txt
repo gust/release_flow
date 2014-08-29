@@ -30,14 +30,39 @@ is there a bugs branch of the form release/<latest_release_candidate/bugs/* (we 
 
 
 
+Hotfix -> a branch of the form "release/<latest_release>/hotfix/*" exists
 
 
 State: No release in progress
-  - takes the latest green ci tag
-  - tags the head of this branch as release candidate
-  - push tags
-  - let's you know what it did
-  - exit
+  - asks whether release or hotfix
+
+  Release:
+    - takes the latest green ci tag
+    - Tag Release Candidate
+      - tags the head of this branch as release candidate
+      - push tags
+      - let's you know what it did
+      - exit
+
+  Hotfix:
+    - git co release/1.1.0
+    - create a hotfix branch: git co -b release/<latest_release>/hotfix/descriptive-name
+    - let's you know what it did
+    - exit
+
+State: Hotfix is in progress
+  - asks whether hotfix is complete
+
+  Yes:
+    - Tag Release Candidate
+      - tags the head of this branch as release candidate -> increment Patch - rc1
+      - push tags
+      - delete hotfix branch
+      - let's you know what it did
+      - exit
+
+  No:
+    - checkout hotfix branch
 
 State: Release in progress
   State: Release Bugfix in progress
@@ -61,6 +86,9 @@ State: Release in progress
       - checkout release candidate tag
       - tag release
       - push tags
+      - Is release a hotfix?
+        - merge hotfix into integration --no--ff
+        - push integration
       - let's you know what it did
       - tells you to deploy
 
@@ -70,4 +98,33 @@ State: Release in progress
       - branch off the temporary branch to create a bug fix branch: release/1.2.1-rc1/bugs/<bug_name>
       - tell user to fix the bug
       - exit
+
+
+
+checkout latest release
+  git co release/1.1.0
+create a hotfix branch:
+  git co -b hotfix/descriptive-name
+fix stuff
+
+
+tag as release candidate:
+git tag release/1.1.1-rc1
+git push origin hotfix/descriptive-name --tags
+Deploy HEAD of release to preproduction
+
+
+perform acceptance
+tag a new patch release:
+git tag release/1.1.1
+push the release:
+git push origin --tags
+merge --no-ff the release back into integration
+git co integration
+gpr
+git fetch --tags
+git merge --no-ff release/1.1.1 
+git push origin integration
+deploy the release:
+rake production deploy:force[release/1.1.1]
 

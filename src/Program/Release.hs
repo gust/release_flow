@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Program.Release (program, determineReleaseState, runProgram) where
 
@@ -7,7 +8,7 @@ import           Control.Monad                     ((<=<))
 import           Control.Monad.Trans.Class         (lift)
 import           Control.Monad.Trans.Either        (hoistEither, runEitherT, EitherT(..))
 import           Data.Maybe                        (fromMaybe, fromJust, listToMaybe, isNothing)
-import           Data.List                         (isPrefixOf)
+import           Data.List                         (isPrefixOf, intercalate)
 
 import           Types                             (Branch (..),
                                                     Environment (..),
@@ -68,6 +69,11 @@ findReleaseCandidateBugfixBranch :: Tag -> [Branch] -> Maybe Branch
 findReleaseCandidateBugfixBranch releaseCandidateTag = 
   listToMaybe . filter (isPrefixOf ((show releaseCandidateTag) ++ "/bugs") . show)
 
+data Adventure = StartNewRelease | StartHotfix deriving (Enum, Bounded)
+instance Show Adventure where
+  show StartNewRelease = "Start new release"
+  show StartHotfix = "Start hotfix"
+
 program :: Program (Either ReleaseError ())
 program = do
   runEitherT release
@@ -80,11 +86,11 @@ program = do
       case determineReleaseState tags branches of
         ReleaseInProgress latestReleaseCandidate -> do
           outputMessage $ "Release candidate found: " ++ (show latestReleaseCandidate)
-          yesOrNo <- promptForYesOrNo "Is this release candidate good? y(es)/n(o):"
+          yesOrNo <- promptForYesOrNo "Is this release candidate good? y(es)/n(o)"
           case yesOrNo of
             True -> releaseCandidate latestReleaseCandidate
             False -> do
-              bugBranchName <- getLineAfterPrompt "What bug are you fixing? (specify dash separated descriptor, e.g. 'theres-a-bug-in-the-code'): "
+              bugBranchName <- getLineAfterPrompt "What bug are you fixing? (specify dash separated descriptor, e.g. 'theres-a-bug-in-the-code')"
               let bugFixBranch = Branch ((show latestReleaseCandidate) ++ "/bugs/" ++ bugBranchName)
               gitCheckoutTag latestReleaseCandidate
               gitCreateAndCheckoutBranch $ tmpBranch latestReleaseCandidate
@@ -92,18 +98,27 @@ program = do
               outputMessage $ "Created branch: " ++ (show bugFixBranch) ++ ", fix your bug!"
 
         NoReleaseInProgress latestReleaseTag -> do
-          -- checkout latest green build
-          lastGreenTag <- hoistEither $ maybeToEither (ProgramExpectationError "Could not find latest green tag") $ latestFilteredTag ciTagFilter tags
-          outputMessage $ "No outstanding release candidate found, starting new release candidate from: " ++ (show lastGreenTag)
-          gitCheckoutTag lastGreenTag
-          let releaseCandidateTag = getNextReleaseCandidateTag latestReleaseTag
-          gitTag releaseCandidateTag
-          outputMessage $ "Started new release: " ++ show releaseCandidateTag ++ ", deploy to preproduction and confirm the release is good to go!"
-          gitPushTags "origin"
+          -- ask whether to do a new release or a hotfix
+          choice <- promptForChoice "Choose your adventure" [StartNewRelease, StartHotfix]
+          case choice of
+            StartNewRelease -> do
+              -- checkout latest green build
+              lastGreenTag <- hoistEither $ maybeToEither (ProgramExpectationError "Could not find latest green tag") $ latestFilteredTag ciTagFilter tags
+              gitCheckoutTag lastGreenTag
+              let releaseCandidateTag = getNextReleaseCandidateTag latestReleaseTag
+              gitTag releaseCandidateTag
+              outputMessage $ "Started new release: " ++ show releaseCandidateTag ++ ", deploy to preproduction and confirm the release is good to go!"
+              gitPushTags "origin"
+            StartHotfix -> do
+              hotfixName <- getLineAfterPrompt "What is the hotfix for? (specify dash separated descriptor, e.g. 'signup-is-broken')"
+              gitCheckoutTag latestReleaseTag
+              let hotfixBranch = Branch ((show latestReleaseTag) ++ "/hotfix/" ++ hotfixName)
+              gitCreateAndCheckoutBranch hotfixBranch 
+              outputMessage $ "Started hotfix: " ++ (show hotfixBranch) ++ ", fix stuff!"
 
         ReleaseInProgressBugfix latestReleaseCandidate branch -> do
           outputMessage $ "Bugfix found: " ++ show branch
-          yesOrNo <- promptForYesOrNo "Is the bug fixed? y(es)/n(o):"
+          yesOrNo <- promptForYesOrNo "Is the bug fixed? y(es)/n(o)"
           case yesOrNo of
             True -> do
               gitCheckoutBranch $ tmpBranch latestReleaseCandidate
@@ -120,6 +135,19 @@ program = do
               outputMessage "Keep fixing that code!"
 
       where
+        promptForChoice :: (Show a, Enum a, Bounded a) => String -> [a] -> EP a
+        promptForChoice prompt choices = do
+          parseChoice <$> (getLineAfterPrompt promptWithChoices) >>= (maybe (promptForChoice prompt choices) return)
+          where
+            promptWithChoices :: String
+            promptWithChoices = prompt ++ ": " ++ (intercalate ", " (map showChoice choices))
+
+            showChoice :: (Show a, Enum a) => a -> String
+            showChoice choice = (show choice) ++ " (" ++ (show $ fromEnum choice) ++ ")"
+
+            parseChoice :: (Enum a, Bounded a) => String -> Maybe a
+            parseChoice = safeToEnum . read
+
         releaseCandidate latestReleaseCandidate = do
           gitCheckoutTag latestReleaseCandidate
           let releaseTag = getReleaseTagFromCandidate latestReleaseCandidate
@@ -132,7 +160,7 @@ program = do
 
         promptForYesOrNo :: String -> EP Bool
         promptForYesOrNo prompt = do
-          parseYesOrNo <$> (getLineAfterPrompt prompt) >>= (\answer -> if isNothing answer then promptForYesOrNo prompt else return $ fromJust answer)
+          parseYesOrNo <$> (getLineAfterPrompt prompt) >>= (maybe (promptForYesOrNo prompt) return)
 
         parseYesOrNo :: String -> Maybe Bool
         parseYesOrNo "y"   = Just True
@@ -141,3 +169,9 @@ program = do
         parseYesOrNo "no"  = Just False
         parseYesOrNo  _    = Nothing
 
+
+safeToEnum :: forall t . (Enum t, Bounded t) => Int -> Maybe t
+safeToEnum i =
+  if (i >= fromEnum (minBound :: t)) && (i <= fromEnum (maxBound :: t))
+    then Just . toEnum $ i
+    else Nothing

@@ -2,7 +2,7 @@
 
 module Integration.Main (fakeWorldIntegrationTestCases) where
 
-import           Test.Tasty                   (TestTree)
+import           Test.Tasty                   (TestTree, testGroup)
 import           Test.Tasty.HUnit             (testCase, (@?=))
 
 import           Control.Monad.State.Strict   (State, get, put, runState)
@@ -19,7 +19,8 @@ import           Types                        (Tag (..), Version (..))
 
 import           Integration.TestCases.Common (FakeWorldTestCase (..),
                                                jackShit,
-                                               noReleaseInProgress,
+                                               noReleaseInProgressStartRelease,
+                                               noReleaseInProgressStartHotfix,
                                                releaseInProgressBad,
                                                releaseInProgressGood,
                                                releaseInProgressBugFoundBugIsFixed,
@@ -31,11 +32,29 @@ makeLenses ''Input
 makeLenses ''Output
 makeLenses ''World
 
-testCases :: [FakeWorldTestCase]
-testCases = [jackShit, noReleaseInProgress, releaseInProgressGood, releaseInProgressBad, releaseInProgressBugFoundBugIsFixed, releaseInProgressBugFoundBugIsNotFixed]
-
-fakeWorldIntegrationTestCases :: [TestTree]
-fakeWorldIntegrationTestCases = map fakeWorldTestCase testCases
+fakeWorldIntegrationTestCases = [
+    [ testGroup "Blank State" [fakeWorldTestCase jackShit] ]
+  , [ testGroup "Hotfix in Progress"
+      fakeWorldTestCase hotfixCompleted
+    , fakeWorldTestCase hotfixNotCompleted
+    ]
+  , [ testGroup "No Release In Progress" [
+        fakeWorldTestCase noReleaseInProgressStartRelease
+      , fakeWorldTestCase noReleaseInProgressStartHotfix
+      ]
+    ]
+  , [ testGroup "Release in Progress" [
+        testGroup "No Bugfix in progress" [
+          fakeWorldTestCase releaseInProgressGood
+        , fakeWorldTestCase releaseInProgressBad
+        ]
+      , testGroup "Bugfix in progress" [
+          fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed
+        , fakeWorldTestCase releaseInProgressBugFoundBugIsFixed
+        ]
+      ]
+    ]
+  ]
 
 fakeWorldTestCase :: FakeWorldTestCase -> TestTree
 fakeWorldTestCase tc = testCase (tc^.testDescription) $
