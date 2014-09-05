@@ -16,13 +16,14 @@ tests:
 
 
   - name: Hotfix in Progress
+    spec:
+      input:
+        tags:
+          - 1.2.3-rc3
+          - release/1.2.3-rc3
+          - ci-123
     tests:
-      spec:
-        input:
-          tags:
-            - 1.2.3-rc3
-            - release/1.2.3-rc3
-            - ci-123
+
 
       - name: Hotfix Completed
         spec:
@@ -44,7 +45,7 @@ tests:
           input:
             userInput:
               - question: "Choose your adventure: Start new release (0), Start hotfix (1)"
-                answer: "0"
+                answer: "1"
           output:
             - "git tags"
             - "git branch"
@@ -55,15 +56,15 @@ tests:
             - "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
 
   - name: No Release In Progress
-    tests:
-      spec:
-        input:
-          tags:
-            - 1.2.3-rc3
-            - release/1.2.3-rc3
-            - ci-123
+    spec:
+      input:
+        tags:
+          - 1.2.3-rc3
+          - release/1.2.3-rc3
+          - ci-123
 
-      - name: No Release In Progress Start Release
+    tests:
+      - name: Start Release
         spec:
           input:
             userInput:
@@ -78,7 +79,7 @@ tests:
           stdout:
             - "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
 
-      - name: No Release In Progress Start Hotfix
+      - name: Start Hotfix
         spec:
           input:
             userInput:
