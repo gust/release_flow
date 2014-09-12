@@ -13,9 +13,9 @@ import           Data.List                         (isPrefixOf, intercalate)
 import           Types                             (Branch (..),
                                                     Environment (..),
                                                     ReleaseState (..), Tag (..),
-                                                    Version (..),
+                                                    Version (..), isNextPatchOf,
                                                     tmpBranch,
-                                                    ReleaseError(..))
+                                                    ReleaseError(..), infoMessage, promptMessage)
 
 import           Interpreter.Commands              (EP, Program,
                                                     outputMessage,
@@ -25,19 +25,21 @@ import           Interpreter.Commands              (EP, Program,
                                                     gitCheckoutBranch,
                                                     gitCheckoutTag, gitPushTags,
                                                     gitRemoveTag, gitRemoveBranch, gitTag,
-                                                    gitTags, gitBranches, gitMergeNoFF
+                                                    gitTags, gitBranches, gitMergeNoFF,
+                                                    gitPush, gitPullRebase
                                                     )
 
 import           Tags                              (ciTagFilter,
                                                     defaultReleaseCandidateTag,
                                                     defaultReleaseTag,
                                                     getAllCandidatesForRelease,
-                                                    getNextReleaseCandidateTag,
                                                     getReleaseTagFromCandidate,
                                                     isReleaseCandidateTag,
                                                     latestFilteredTag,
                                                     releaseCandidateTagFilter,
-                                                    releaseTagFilter)
+                                                    releaseTagFilter,
+                                                    getNextMinorReleaseCandidateTag,
+                                                    getNextPatchReleaseCandidateTag)
 
 runProgram :: (Monad m, Functor m) => (Program (Either ReleaseError b) -> (EitherT ReleaseError m (Either ReleaseError b))) -> Program (Either ReleaseError b) -> m (Either ReleaseError b)
 runProgram interpreter program =
@@ -56,18 +58,26 @@ determineReleaseState tags branches =
     latestRelease = fromMaybe
       defaultReleaseTag $
       latestFilteredTag releaseTagFilter tags
+    maybeHotfixBranch = findHotfixBranch latestRelease branches
   in
-  case bugfixBranch of
-    Just branch -> ReleaseInProgressBugfix latestReleaseCandidate branch
-    Nothing ->
-      if latestReleaseCandidate > latestRelease
-      then ReleaseInProgress latestReleaseCandidate
-      else NoReleaseInProgress latestRelease
+  case maybeHotfixBranch of
+    Just hotfixBranch -> HotfixInProgress latestRelease hotfixBranch
+    Nothing -> 
+      case bugfixBranch of
+        Just branch -> ReleaseInProgressBugfix latestReleaseCandidate branch
+        Nothing ->
+          if latestReleaseCandidate > latestRelease
+          then ReleaseInProgress latestRelease latestReleaseCandidate
+          else NoReleaseInProgress latestRelease
 
 -- TODO handle case when there are multipe matching branches
 findReleaseCandidateBugfixBranch :: Tag -> [Branch] -> Maybe Branch
 findReleaseCandidateBugfixBranch releaseCandidateTag = 
   listToMaybe . filter (isPrefixOf ((show releaseCandidateTag) ++ "/bugs") . show)
+
+findHotfixBranch :: Tag -> [Branch] -> Maybe Branch
+findHotfixBranch releaseTag =
+  listToMaybe . filter (isPrefixOf ((show releaseTag) ++ "/hotfix") . show)
 
 data Adventure = StartNewRelease | StartHotfix deriving (Enum, Bounded)
 instance Show Adventure where
@@ -84,18 +94,18 @@ program = do
       tags <- gitTags
       branches <- gitBranches
       case determineReleaseState tags branches of
-        ReleaseInProgress latestReleaseCandidate -> do
-          outputMessage $ "Release candidate found: " ++ (show latestReleaseCandidate)
+        ReleaseInProgress latestReleaseTag latestReleaseCandidate -> do
+          outputMessage $ infoMessage $  "Release candidate found: " ++ (show latestReleaseCandidate)
           yesOrNo <- promptForYesOrNo "Is this release candidate good? y(es)/n(o)"
           case yesOrNo of
-            True -> releaseCandidate latestReleaseCandidate
+            True -> releaseCandidate latestReleaseTag latestReleaseCandidate
             False -> do
               bugBranchName <- getLineAfterPrompt "What bug are you fixing? (specify dash separated descriptor, e.g. 'theres-a-bug-in-the-code')"
               let bugFixBranch = Branch ((show latestReleaseCandidate) ++ "/bugs/" ++ bugBranchName)
               gitCheckoutTag latestReleaseCandidate
               gitCreateAndCheckoutBranch $ tmpBranch latestReleaseCandidate
               gitCreateAndCheckoutBranch bugFixBranch
-              outputMessage $ "Created branch: " ++ (show bugFixBranch) ++ ", fix your bug!"
+              outputMessage $ infoMessage $  "Created branch: " ++ (show bugFixBranch) ++ ", fix your bug!"
 
         NoReleaseInProgress latestReleaseTag -> do
           -- ask whether to do a new release or a hotfix
@@ -105,34 +115,53 @@ program = do
               -- checkout latest green build
               lastGreenTag <- hoistEither $ maybeToEither (ProgramExpectationError "Could not find latest green tag") $ latestFilteredTag ciTagFilter tags
               gitCheckoutTag lastGreenTag
-              let releaseCandidateTag = getNextReleaseCandidateTag latestReleaseTag
+              let releaseCandidateTag = getNextMinorReleaseCandidateTag latestReleaseTag
               gitTag releaseCandidateTag
-              outputMessage $ "Started new release: " ++ show releaseCandidateTag ++ ", deploy to preproduction and confirm the release is good to go!"
+              outputMessage $ infoMessage $  "Started new release: " ++ show releaseCandidateTag ++ ", deploy to preproduction and confirm the release is good to go!"
               gitPushTags "origin"
             StartHotfix -> do
               hotfixName <- getLineAfterPrompt "What is the hotfix for? (specify dash separated descriptor, e.g. 'signup-is-broken')"
               gitCheckoutTag latestReleaseTag
               let hotfixBranch = Branch ((show latestReleaseTag) ++ "/hotfix/" ++ hotfixName)
               gitCreateAndCheckoutBranch hotfixBranch 
-              outputMessage $ "Started hotfix: " ++ (show hotfixBranch) ++ ", fix stuff!"
+              outputMessage $ infoMessage $  "Started hotfix: " ++ (show hotfixBranch) ++ ", fix stuff!"
 
         ReleaseInProgressBugfix latestReleaseCandidate branch -> do
-          outputMessage $ "Bugfix found: " ++ show branch
+          outputMessage $ infoMessage $  "Bugfix found: " ++ show branch
           yesOrNo <- promptForYesOrNo "Is the bug fixed? y(es)/n(o)"
           case yesOrNo of
             True -> do
               gitCheckoutBranch $ tmpBranch latestReleaseCandidate
               gitMergeNoFF branch
               gitRemoveBranch branch
-              let nextReleaseCandidateTag = getNextReleaseCandidateTag latestReleaseCandidate
+              let nextReleaseCandidateTag = getNextMinorReleaseCandidateTag latestReleaseCandidate
               gitTag $ nextReleaseCandidateTag
-              outputMessage $ "Created new release candidate: " ++ show nextReleaseCandidateTag ++ ", you'll get it this time!"
+              outputMessage $ infoMessage $  "Created new release candidate: " ++ show nextReleaseCandidateTag ++ ", you'll get it this time!"
               gitPushTags "origin"
               gitCheckoutTag nextReleaseCandidateTag
               gitRemoveBranch $ tmpBranch latestReleaseCandidate
             False -> do
               gitCheckoutBranch branch
-              outputMessage "Keep fixing that code!"
+              outputMessage $ infoMessage "Keep fixing that code!"
+
+        HotfixInProgress releaseTag hotfixBranch -> do
+          outputMessage $ infoMessage $  "Hotfix found: " ++ show hotfixBranch
+          gitCheckoutBranch hotfixBranch
+          yesOrNo <- promptForYesOrNo "Is the hotfix complete? y(es)/n(o)"
+          case yesOrNo of
+            True -> do
+              let nextReleaseCandidateTag = getNextPatchReleaseCandidateTag releaseTag
+              gitTag nextReleaseCandidateTag -- "git tag release/1.2.4-rc1"
+              gitPushTags "origin" -- "git push --tags"
+              gitCheckoutTag nextReleaseCandidateTag -- "git checkout release/1.2.4-rc1"
+              gitRemoveBranch hotfixBranch -- "git branch -d release/1.2.3/hotfix/hot-fixing", "git push origin :release/1.2.3/hotfix/hot-fixing"
+              outputMessage $ infoMessage $  "Started new release: " ++ show nextReleaseCandidateTag ++ ", deploy to preproduction and confirm the release is good to go!"
+
+            False -> do
+              outputMessage $ infoMessage "Keep fixing that code!"
+
+
+        unhandledState -> error $ "State is not handled: " ++ show unhandledState
 
       where
         promptForChoice :: (Show a, Enum a, Bounded a) => String -> [a] -> EP a
@@ -148,16 +177,6 @@ program = do
             parseChoice :: (Enum a, Bounded a) => String -> Maybe a
             parseChoice = safeToEnum . read
 
-        releaseCandidate latestReleaseCandidate = do
-          gitCheckoutTag latestReleaseCandidate
-          let releaseTag = getReleaseTagFromCandidate latestReleaseCandidate
-          gitTag releaseTag
-          gitPushTags "origin"
-          gitCheckoutTag releaseTag
-          outputMessage $ "Created tag: " ++ (show releaseTag) ++ ", deploy to production cowboy!"
-
-        maybeToEither = flip maybe Right . Left
-
         promptForYesOrNo :: String -> EP Bool
         promptForYesOrNo prompt = do
           parseYesOrNo <$> (getLineAfterPrompt prompt) >>= (maybe (promptForYesOrNo prompt) return)
@@ -169,6 +188,27 @@ program = do
         parseYesOrNo "no"  = Just False
         parseYesOrNo  _    = Nothing
 
+        releaseCandidate latestReleaseTag latestReleaseCandidate = do
+          gitCheckoutTag latestReleaseCandidate
+          let releaseTag = getReleaseTagFromCandidate latestReleaseCandidate
+          gitTag releaseTag
+          gitPushTags "origin"
+
+          if  version latestReleaseCandidate `isNextPatchOf` version latestReleaseTag
+            then do
+              let integration = Branch "integration"
+              gitCheckoutBranch integration -- "git checkout integration"
+              gitPullRebase -- "git pull --rebase"
+              gitMergeNoFF releaseTag -- "git merge --no-ff release/<patch release>
+              gitPush "origin" integration
+
+              gitCheckoutTag releaseTag
+              outputMessage $ infoMessage $  "Created tag: " ++ (show releaseTag) ++ ", deploy to production cowboy!"
+            else do
+              gitCheckoutTag releaseTag
+              outputMessage $ infoMessage $  "Created tag: " ++ (show releaseTag) ++ ", deploy to production cowboy!"
+
+        maybeToEither = flip maybe Right . Left
 
 safeToEnum :: forall t . (Enum t, Bounded t) => Int -> Maybe t
 safeToEnum i =

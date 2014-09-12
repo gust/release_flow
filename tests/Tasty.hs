@@ -6,6 +6,7 @@ import           Integration.Main  (fakeWorldIntegrationTestCases)
 import           Unit.Parsers.Tags (tagsParsersUnitTests)
 import           Unit.ReleaseState (releaseStateUnitTests)
 import           Unit.Tags         (getAllCandidatesForReleaseUnitTests)
+import           Unit.Versions     (versionUnitTests)
 
 main = defaultMain tests
   where
@@ -41,6 +42,6 @@ main = defaultMain tests
       where
         allTests = testGroup "Tasty Tests" [unitTests, integrationTests]
           where
-            unitTests = testGroup "HUnit Tests" $ concat [tagsParsersUnitTests, releaseStateUnitTests, getAllCandidatesForReleaseUnitTests]
+            unitTests = testGroup "HUnit Tests" $ concat [tagsParsersUnitTests, releaseStateUnitTests, getAllCandidatesForReleaseUnitTests, versionUnitTests]
             integrationTests = testGroup "Integration Tests" $ concat fakeWorldIntegrationTestCases
 

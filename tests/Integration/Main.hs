@@ -22,9 +22,12 @@ import           Integration.TestCases.Common (FakeWorldTestCase (..),
                                                noReleaseInProgressStartRelease,
                                                noReleaseInProgressStartHotfix,
                                                releaseInProgressBad,
-                                               releaseInProgressGood,
+                                               releaseInProgressGoodMinorRelease,
+                                               releaseInProgressGoodPatchRelease,
                                                releaseInProgressBugFoundBugIsFixed,
-                                               releaseInProgressBugFoundBugIsNotFixed)
+                                               releaseInProgressBugFoundBugIsNotFixed,
+                                               hotfixInProgressHotfixFixed,
+                                               hotfixInProgressHotfixNotFixed)
 
 makeLenses ''FakeWorldTestCase
 
@@ -34,9 +37,10 @@ makeLenses ''World
 
 fakeWorldIntegrationTestCases = [
     [ testGroup "Blank State" [fakeWorldTestCase jackShit] ]
-  , [ testGroup "Hotfix in Progress"
-      fakeWorldTestCase hotfixCompleted
-    , fakeWorldTestCase hotfixNotCompleted
+  , [ testGroup "Hotfix in Progress" [
+        fakeWorldTestCase hotfixInProgressHotfixFixed
+      , fakeWorldTestCase hotfixInProgressHotfixNotFixed
+      ]
     ]
   , [ testGroup "No Release In Progress" [
         fakeWorldTestCase noReleaseInProgressStartRelease
@@ -45,8 +49,13 @@ fakeWorldIntegrationTestCases = [
     ]
   , [ testGroup "Release in Progress" [
         testGroup "No Bugfix in progress" [
-          fakeWorldTestCase releaseInProgressGood
-        , fakeWorldTestCase releaseInProgressBad
+          testGroup "Release is Good" [
+            fakeWorldTestCase releaseInProgressGoodMinorRelease
+          , fakeWorldTestCase releaseInProgressGoodPatchRelease
+          ]
+        , testGroup "Release is Bad" [
+            fakeWorldTestCase releaseInProgressBad
+          ]
         ]
       , testGroup "Bugfix in progress" [
           fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed
