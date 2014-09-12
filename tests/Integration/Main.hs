@@ -2,29 +2,29 @@
 
 module Integration.Main (fakeWorldIntegrationTestCases) where
 
-import           Test.Tasty                   (TestTree, testGroup)
-import           Test.Tasty.HUnit             (testCase, (@?=))
+import           Test.Tasty                 (TestTree, testGroup)
+import           Test.Tasty.HUnit           (testCase, (@?=))
 
-import           Control.Monad.State.Strict   (State, get, put, runState)
-import           Control.Monad.Trans.Either   (EitherT, runEitherT)
-import           Data.List                    (intercalate)
+import           Control.Monad.State.Strict (State, get, put, runState)
+import           Control.Monad.Trans.Either (EitherT, runEitherT)
+import           Data.List                  (intercalate)
 
-import           Control.Lens                 (makeLenses, (%=), (^.))
-import           Interpreter.State            (Input (..), Output (..),
-                                               World (..), defaultInput,
-                                               defaultWorld, initialOutput,
-                                               interpret)
-import           Program.Release              (program, runProgram)
-import           Types                        (Tag (..), Version (..))
+import           Control.Lens               (makeLenses, (%=), (^.))
+import           Interpreter.State          (Input (..), Output (..),
+                                             World (..), defaultInput,
+                                             defaultWorld, initialOutput,
+                                             interpret)
+import           Program.Release            (program, runProgram)
+import           Types                      (Tag (..), Version (..))
 
-import           Integration.TestCases.Common (FakeWorldTestCase (..),
-                                               jackShit,
-                                               noReleaseInProgressStartRelease,
-                                               noReleaseInProgressStartHotfix,
-                                               releaseInProgressBad,
-                                               releaseInProgressGood,
-                                               releaseInProgressBugFoundBugIsFixed,
-                                               releaseInProgressBugFoundBugIsNotFixed)
+{- import           Integration.TestCases.Common (FakeWorldTestCase (..), -}
+                                               {- jackShit, -}
+                                               {- noReleaseInProgressStartRelease, -}
+                                               {- noReleaseInProgressStartHotfix, -}
+                                               {- releaseInProgressBad, -}
+                                               {- releaseInProgressGood, -}
+                                               {- releaseInProgressBugFoundBugIsFixed, -}
+                                               {- releaseInProgressBugFoundBugIsNotFixed) -}
 
 makeLenses ''FakeWorldTestCase
 
@@ -32,29 +32,51 @@ makeLenses ''Input
 makeLenses ''Output
 makeLenses ''World
 
-fakeWorldIntegrationTestCases = [
-    [ testGroup "Blank State" [fakeWorldTestCase jackShit] ]
-  , [ testGroup "Hotfix in Progress"
-      fakeWorldTestCase hotfixCompleted
-    , fakeWorldTestCase hotfixNotCompleted
-    ]
-  , [ testGroup "No Release In Progress" [
-        fakeWorldTestCase noReleaseInProgressStartRelease
-      , fakeWorldTestCase noReleaseInProgressStartHotfix
-      ]
-    ]
-  , [ testGroup "Release in Progress" [
-        testGroup "No Bugfix in progress" [
-          fakeWorldTestCase releaseInProgressGood
-        , fakeWorldTestCase releaseInProgressBad
-        ]
-      , testGroup "Bugfix in progress" [
-          fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed
-        , fakeWorldTestCase releaseInProgressBugFoundBugIsFixed
-        ]
-      ]
-    ]
-  ]
+type Command = String
+
+data SpecInput = SpecInput {
+      siTags        :: [Tag]
+    , siUserChoices :: (String, String)
+  }
+
+data SpecOutput = SpecOutput {
+      siCommands :: [Command]
+  }
+
+data Spec = Spec {
+      sInput  :: SpecInput
+    , sOutput :: SpecOutput
+    , sStdout :: [String]
+  }
+
+data TestCase = TestCase {
+      tcName :: String
+    , tcSpec :: Spec
+  }
+
+{- fakeWorldIntegrationTestCases = [ -}
+    {- [ testGroup "Blank State" [fakeWorldTestCase jackShit] ] -}
+  {- , [ testGroup "Hotfix in Progress" -}
+      {- fakeWorldTestCase hotfixCompleted -}
+    {- , fakeWorldTestCase hotfixNotCompleted -}
+    {- ] -}
+  {- , [ testGroup "No Release In Progress" [ -}
+        {- fakeWorldTestCase noReleaseInProgressStartRelease -}
+      {- , fakeWorldTestCase noReleaseInProgressStartHotfix -}
+      {- ] -}
+    {- ] -}
+  {- , [ testGroup "Release in Progress" [ -}
+        {- testGroup "No Bugfix in progress" [ -}
+          {- fakeWorldTestCase releaseInProgressGood -}
+        {- , fakeWorldTestCase releaseInProgressBad -}
+        {- ] -}
+      {- , testGroup "Bugfix in progress" [ -}
+          {- fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed -}
+        {- , fakeWorldTestCase releaseInProgressBugFoundBugIsFixed -}
+        {- ] -}
+      {- ] -}
+    {- ] -}
+  {- ] -}
 
 fakeWorldTestCase :: FakeWorldTestCase -> TestTree
 fakeWorldTestCase tc = testCase (tc^.testDescription) $
