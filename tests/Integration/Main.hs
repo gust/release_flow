@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Integration.Main (fakeWorldIntegrationTestCases) where
+module Integration.Main (integrationTestCases) where
 
 import           Test.Tasty                 (TestTree, testGroup)
 import           Test.Tasty.HUnit           (testCase, (@?=))
@@ -32,51 +32,30 @@ makeLenses ''Input
 makeLenses ''Output
 makeLenses ''World
 
-type Command = String
 
-data SpecInput = SpecInput {
-      siTags        :: [Tag]
-    , siUserChoices :: (String, String)
-  }
-
-data SpecOutput = SpecOutput {
-      siCommands :: [Command]
-  }
-
-data Spec = Spec {
-      sInput  :: SpecInput
-    , sOutput :: SpecOutput
-    , sStdout :: [String]
-  }
-
-data TestCase = TestCase {
-      tcName :: String
-    , tcSpec :: Spec
-  }
-
-{- fakeWorldIntegrationTestCases = [ -}
-    {- [ testGroup "Blank State" [fakeWorldTestCase jackShit] ] -}
-  {- , [ testGroup "Hotfix in Progress" -}
-      {- fakeWorldTestCase hotfixCompleted -}
-    {- , fakeWorldTestCase hotfixNotCompleted -}
-    {- ] -}
-  {- , [ testGroup "No Release In Progress" [ -}
-        {- fakeWorldTestCase noReleaseInProgressStartRelease -}
-      {- , fakeWorldTestCase noReleaseInProgressStartHotfix -}
-      {- ] -}
-    {- ] -}
-  {- , [ testGroup "Release in Progress" [ -}
-        {- testGroup "No Bugfix in progress" [ -}
-          {- fakeWorldTestCase releaseInProgressGood -}
-        {- , fakeWorldTestCase releaseInProgressBad -}
-        {- ] -}
-      {- , testGroup "Bugfix in progress" [ -}
-          {- fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed -}
-        {- , fakeWorldTestCase releaseInProgressBugFoundBugIsFixed -}
-        {- ] -}
-      {- ] -}
-    {- ] -}
-  {- ] -}
+-- fakeWorldIntegrationTestCases = [
+--     [ testGroup "Blank State" [fakeWorldTestCase jackShit] ]
+--   , [ testGroup "Hotfix in Progress"
+--       fakeWorldTestCase hotfixCompleted
+--     , fakeWorldTestCase hotfixNotCompleted
+--     ]
+--   , [ testGroup "No Release In Progress" [
+--         fakeWorldTestCase noReleaseInProgressStartRelease
+--       , fakeWorldTestCase noReleaseInProgressStartHotfix
+--       ]
+--     ]
+--   , [ testGroup "Release in Progress" [
+--         testGroup "No Bugfix in progress" [
+--           fakeWorldTestCase releaseInProgressGood
+--         , fakeWorldTestCase releaseInProgressBad
+--         ]
+--       , testGroup "Bugfix in progress" [
+--           fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed
+--         , fakeWorldTestCase releaseInProgressBugFoundBugIsFixed
+--         ]
+--       ]
+--     ]
+--   ]
 
 fakeWorldTestCase :: FakeWorldTestCase -> TestTree
 fakeWorldTestCase tc = testCase (tc^.testDescription) $
