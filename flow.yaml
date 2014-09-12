@@ -23,8 +23,6 @@ tests:
           - release/1.2.3-rc3
           - ci-123
     tests:
-
-
       - name: Hotfix Completed
         spec:
           input:
