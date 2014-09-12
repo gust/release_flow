@@ -21,15 +21,15 @@ import           Types
 defaultReleaseCandidateTag = ReleaseCandidateTag (SemVer 0 0 0) 0
 defaultReleaseTag = ReleaseTag $ SemVer 0 0 0
 
-
 getNextReleaseCandidateTag :: Tag -> Tag
-getNextReleaseCandidateTag tag =
+getNextReleaseCandidateTag (ReleaseTag version) =
   ReleaseCandidateTag nextRelease 1
   where
-    nextRelease = nextMinorVersion $ version tag
-
+    nextRelease = nextMinorVersion version
     nextMinorVersion :: Version -> Version
     nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) 0
+getNextReleaseCandidateTag (ReleaseCandidateTag version rc) =
+  ReleaseCandidateTag version (rc + 1)
 
 
 latestFilteredTag :: (Tag -> Bool) -> [Tag] -> Maybe Tag

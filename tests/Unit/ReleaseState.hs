@@ -7,9 +7,9 @@ import           Program.Release  (determineReleaseState)
 import           Types
 
 releaseStateUnitTests :: [TestTree]
-releaseStateUnitTests = map (\(description, tags, releaseState) ->
+releaseStateUnitTests = map (\(description, tags, branches, releaseState) ->
   testCase description $
-  determineReleaseState tags @?= releaseState) allTestCases
+  determineReleaseState tags branches @?= releaseState) allTestCases
     where
 
       allTestCases = concat [
@@ -23,6 +23,7 @@ releaseStateUnitTests = map (\(description, tags, releaseState) ->
               , ReleaseTag $ SemVer 1 2 3
               , CiTag      $ UnixTimeVer 123
               ]
+            , []
             , NoReleaseInProgress $ ReleaseTag $ SemVer 1 2 3
           )
         , (   "no release in progress, no prior release candidate tags"
@@ -30,6 +31,7 @@ releaseStateUnitTests = map (\(description, tags, releaseState) ->
                 ReleaseTag $ SemVer 1 2 3
               , CiTag      $ UnixTimeVer 123
               ]
+            , []
             , NoReleaseInProgress $ ReleaseTag $ SemVer 1 2 3
           )
         , (   "release is in progress"
@@ -38,6 +40,7 @@ releaseStateUnitTests = map (\(description, tags, releaseState) ->
               , ReleaseTag $ SemVer 1 2 3
               , CiTag      $ UnixTimeVer 123
               ]
+            , []
             , ReleaseInProgress $ ReleaseCandidateTag (SemVer 1 3 0) 2
           )
         , (   "release is in progress, no prior release tags"
@@ -45,6 +48,17 @@ releaseStateUnitTests = map (\(description, tags, releaseState) ->
                 ReleaseCandidateTag (SemVer 1 3 0) 2
               , CiTag      $ UnixTimeVer 123
               ]
+            , []
             , ReleaseInProgress $ ReleaseCandidateTag (SemVer 1 3 0) 2
+          )
+        , (   "release is in progress, bugfix in progress"
+            , [
+                ReleaseCandidateTag (SemVer 1 3 0) 2
+              , CiTag      $ UnixTimeVer 123
+              ]
+            , [
+                Branch "release/1.3.0-rc2/bugs/fixing-a-hole-where-the-rain-gets-in"
+              ]
+            , ReleaseInProgressBugfix (ReleaseCandidateTag (SemVer 1 3 0) 2) (Branch "release/1.3.0-rc2/bugs/fixing-a-hole-where-the-rain-gets-in")
           )
         ]

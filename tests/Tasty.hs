@@ -42,5 +42,5 @@ main = defaultMain tests
         allTests = testGroup "Tasty Tests" [unitTests, integrationTests]
           where
             unitTests = testGroup "HUnit Tests" $ concat [tagsParsersUnitTests, releaseStateUnitTests, getAllCandidatesForReleaseUnitTests]
-            integrationTests = testGroup "Integration Tests" $ concat [fakeWorldIntegrationTestCases]
+            integrationTests = testGroup "Integration Tests" $ concat fakeWorldIntegrationTestCases
 

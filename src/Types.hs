@@ -12,6 +12,9 @@ prefix (ReleaseTag _)             = releaseTagPrefix
 prefix (CiTag _)                  = ciTagPrefix
 prefix (ReleaseCandidateTag _ _)  = releaseTagPrefix
 
+tmpBranch :: Tag -> Branch
+tmpBranch tag = Branch $ (show tag) ++ "/tmp"
+
 data Version = SemVer {
     major :: Int
   , minor :: Int
@@ -67,4 +70,12 @@ instance Show Environment where
   show Preproduction  = "preproduction"
   show Production     = "production"
 
-data ReleaseState = NoReleaseInProgress Tag | ReleaseInProgress Tag deriving (Eq, Show)
+data ReleaseState = NoReleaseInProgress Tag 
+  | ReleaseInProgress Tag 
+  | ReleaseInProgressBugfix Tag Branch 
+  deriving (Eq, Show)
+
+data ReleaseError = ExecutionError String | ProgramExpectationError String
+instance Show ReleaseError where
+  show (ExecutionError msg) = "Interpreter Error: " ++ msg
+  show (ProgramExpectationError msg)     = "Program Error: " ++ msg

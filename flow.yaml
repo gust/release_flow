@@ -1,0 +1,98 @@
+tests:
+  - name: Blank State
+    spec:
+      input:
+        tags:
+          - 1.2.3-rc3
+          - release/1.2.3-rc3
+      userInput:
+        - question: "Choose your adventure: Start new release (0), Start hotfix (1)"
+          answer: "0"
+      output:
+        - "git tags"
+        - "git branch"
+      stderr: 
+        - "Program Error: Could not find latest green tag"
+
+
+  - name: Hotfix in Progress
+    spec:
+      input:
+        tags:
+          - 1.2.3-rc3
+          - release/1.2.3-rc3
+          - ci-123
+    tests:
+
+
+      - name: Hotfix Completed
+        spec:
+          input:
+            userInput:
+              - question: "Choose your adventure: Start new release (0), Start hotfix (1)"
+                answer: "0"
+          output:
+            - "git tags"
+            - "git branch"
+            - "git checkout ci/123"
+            - "git tag release/1.3.0-rc1"
+            - "git push origin --tags"
+          stdout: 
+            - "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
+
+      - name: Hotfix Not Completed
+        spec:
+          input:
+            userInput:
+              - question: "Choose your adventure: Start new release (0), Start hotfix (1)"
+                answer: "1"
+          output:
+            - "git tags"
+            - "git branch"
+            - "git checkout ci/123"
+            - "git tag release/1.3.0-rc1"
+            - "git push origin --tags"
+          stdout:
+            - "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
+
+  - name: No Release In Progress
+    spec:
+      input:
+        tags:
+          - 1.2.3-rc3
+          - release/1.2.3-rc3
+          - ci-123
+
+    tests:
+      - name: Start Release
+        spec:
+          input:
+            userInput:
+              - question: "Choose your adventure: Start new release (0), Start hotfix (1)"
+                answer: "0"
+          output:
+            - "git tags"
+            - "git branch"
+            - "git checkout ci/123"
+            - "git tag release/1.3.0-rc1"
+            - "git push origin --tags"
+          stdout:
+            - "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
+
+      - name: Start Hotfix
+        spec:
+          input:
+            userInput:
+              - question: "Choose your adventure: Start new release (0), Start hotfix (1)"
+                answer: "0"
+          output:
+            - "git tags"
+            - "git branch"
+            - "git checkout ci/123"
+            - "git tag release/1.3.0-rc1"
+            - "git push origin --tags"
+          stdout:
+            - "Started new release: release/1.3.0-rc1, deploy to preproduction and confirm the release is good to go!"
+
+
+

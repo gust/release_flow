@@ -18,13 +18,13 @@ import           Text.ParserCombinators.Parsec.Error (ParseError, errorMessages,
 import           Types
 
 
-parsedTags :: String -> Either String [Tag]
+parsedTags :: String -> [Tag]
 parsedTags =
-  convertToStringError . parse tagsParser ""
+  handleError . parse tagsParser ""
   where
-    convertToStringError :: Either ParseError a -> Either String a
-    convertToStringError (Left parseError) = Left $ intercalate ", " $ map messageString $ errorMessages parseError
-    convertToStringError (Right x) = Right x
+    handleError :: Either ParseError a -> a
+    handleError (Left parseError) = error $ show parseError
+    handleError (Right x) = x
 
 tagsParser :: Parser [Tag]
 tagsParser = catMaybes <$> (many $

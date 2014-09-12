@@ -31,6 +31,7 @@ executable flow
     , free
     , lens
     , containers
+    , prelude-safeenum
 
 -- cabal install with tests support:
 -- cabal install --enable-tests
@@ -61,4 +62,5 @@ test-suite Tasty
     , mtl
     , lens
     , containers
+    , prelude-safeenum
 

@@ -2,7 +2,7 @@
 
 module Integration.Main (fakeWorldIntegrationTestCases) where
 
-import           Test.Tasty                   (TestTree)
+import           Test.Tasty                   (TestTree, testGroup)
 import           Test.Tasty.HUnit             (testCase, (@?=))
 
 import           Control.Monad.State.Strict   (State, get, put, runState)
@@ -14,13 +14,17 @@ import           Interpreter.State            (Input (..), Output (..),
                                                World (..), defaultInput,
                                                defaultWorld, initialOutput,
                                                interpret)
-import           Program.Release              (program)
+import           Program.Release              (program, runProgram)
 import           Types                        (Tag (..), Version (..))
 
 import           Integration.TestCases.Common (FakeWorldTestCase (..),
-                                               noReleaseInProgress,
+                                               jackShit,
+                                               noReleaseInProgressStartRelease,
+                                               noReleaseInProgressStartHotfix,
                                                releaseInProgressBad,
-                                               releaseInProgressGood)
+                                               releaseInProgressGood,
+                                               releaseInProgressBugFoundBugIsFixed,
+                                               releaseInProgressBugFoundBugIsNotFixed)
 
 makeLenses ''FakeWorldTestCase
 
@@ -28,11 +32,29 @@ makeLenses ''Input
 makeLenses ''Output
 makeLenses ''World
 
-testCases :: [FakeWorldTestCase]
-testCases = [noReleaseInProgress, releaseInProgressGood, releaseInProgressBad]
-
-fakeWorldIntegrationTestCases :: [TestTree]
-fakeWorldIntegrationTestCases = map fakeWorldTestCase testCases
+fakeWorldIntegrationTestCases = [
+    [ testGroup "Blank State" [fakeWorldTestCase jackShit] ]
+  , [ testGroup "Hotfix in Progress"
+      fakeWorldTestCase hotfixCompleted
+    , fakeWorldTestCase hotfixNotCompleted
+    ]
+  , [ testGroup "No Release In Progress" [
+        fakeWorldTestCase noReleaseInProgressStartRelease
+      , fakeWorldTestCase noReleaseInProgressStartHotfix
+      ]
+    ]
+  , [ testGroup "Release in Progress" [
+        testGroup "No Bugfix in progress" [
+          fakeWorldTestCase releaseInProgressGood
+        , fakeWorldTestCase releaseInProgressBad
+        ]
+      , testGroup "Bugfix in progress" [
+          fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed
+        , fakeWorldTestCase releaseInProgressBugFoundBugIsFixed
+        ]
+      ]
+    ]
+  ]
 
 fakeWorldTestCase :: FakeWorldTestCase -> TestTree
 fakeWorldTestCase tc = testCase (tc^.testDescription) $
@@ -50,10 +72,8 @@ fakeWorldTestCase tc = testCase (tc^.testDescription) $
                 }
 
                 stateInterpretation :: State World ()
-                stateInterpretation = do
-                  eitherResult <- runEitherT $ interpret program
-                  logMessages $ either (:[]) id eitherResult
+                stateInterpretation = runProgram interpret program >>= either (logError . show) return
 
-                logMessages :: [String] -> State World ()
-                logMessages e = wOutput.oLog %= (\message -> e ++ message)
+                logError :: String -> State World ()
+                logError msg = wOutput.oStdErr %= (\existing -> existing ++ [msg])
 
