@@ -15,9 +15,9 @@ where
 import           Control.Error              (throwT)
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Monad.Trans.Either (EitherT, hoistEither)
+import           Data.List                  (intercalate)
 import qualified Data.Map                   as M
 import           Data.Maybe                 (fromJust)
-import           Data.List                  (intercalate)
 
 import           Control.Monad.Free         (Free (..))
 import           Control.Monad.State.Strict (State, get, put, runState)
@@ -26,7 +26,9 @@ import           Control.Lens               (makeLenses, (%=), (^.))
 import           Data.Functor               ((<$>))
 import           Interpreter.Commands       (Interaction (..), Program)
 import           Parser.Tag                 (parsedTags)
-import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..))
+import           Types                      (Branch (..), Environment (..),
+                                             Message (..), ReleaseError (..),
+                                             Tag)
 
 data Input = Input {
     _iTags      :: [Tag]
@@ -35,15 +37,15 @@ data Input = Input {
 } deriving (Eq, Show)
 
 data Output = Output {
-    _oCommands  :: [String]
-  , _oStdOut    :: [String]
-  , _oStdErr    :: [String]
-} deriving (Eq, Show)
+    _oCommands :: [String]
+  , _oStdOut   :: [String]
+  , _oStdErr   :: [String]
+} deriving (Eq)
 
 data World = World {
-    _wInput     :: Input
-  , _wOutput    :: Output
-} deriving (Eq, Show)
+    _wInput  :: Input
+  , _wOutput :: Output
+} deriving (Eq)
 
 defaultInput = Input {
     _iTags              = []
@@ -65,6 +67,17 @@ defaultWorld = World {
 makeLenses ''Input
 makeLenses ''Output
 makeLenses ''World
+
+instance Show Output where
+  show o = "\noutput:" ++ (formatList [
+        ("commands", o^.oCommands)
+      , ("stdout", o^.oStdOut)
+      , ("stderr", o^.oStdErr)
+      ])
+
+formatList :: [(String, [String])] -> String
+formatList [] = ""
+formatList ((name, subitems):rest) = "\n  " ++ name ++ ": " ++ (concat $ map ("\n\t"++) $ subitems) ++ (formatList rest)
 
 type ES = EitherT ReleaseError (State World)
 
@@ -154,9 +167,11 @@ interpret (Free x) = case x of
       wOutput . oCommands %= (++ ["git merge --no-ff " ++ show commitish])
 
     gitPullRebase :: ES ()
-    gitPullRebase = 
+    gitPullRebase =
       wOutput . oCommands %= (++ ["git pull --rebase"])
 
-    outputMessage :: String -> ES ()
-    outputMessage message = wOutput . oStdOut %= (++ [message])
+    outputMessage :: Message -> ES ()
+    outputMessage message = wOutput . oStdOut %= (++ [toString message]) where
+      toString (Message _ s) = s
+
 

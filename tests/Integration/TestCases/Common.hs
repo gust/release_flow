@@ -18,7 +18,7 @@ module Integration.TestCases.Common
 import           Interpreter.State (Input (..), Output (..), World (..),
                                     defaultInput, defaultWorld, initialOutput,
                                     interpret)
-import           Types             (Tag (..), Version (..), Branch(..))
+import           Types             (Branch (..), Tag (..), Version (..))
 
 
 data FakeWorldTestCase = FakeWorldTestCase {

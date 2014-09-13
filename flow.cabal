@@ -63,4 +63,5 @@ test-suite Tasty
     , lens
     , containers
     , prelude-safeenum
+    , ansi-terminal
 
