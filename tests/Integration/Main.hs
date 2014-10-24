@@ -17,14 +17,18 @@ import           Interpreter.State          (Input (..), Output (..),
 import           Program.Release            (program, runProgram)
 import           Types                      (Tag (..), Version (..))
 
-{- import           Integration.TestCases.Common (FakeWorldTestCase (..), -}
-                                               {- jackShit, -}
-                                               {- noReleaseInProgressStartRelease, -}
-                                               {- noReleaseInProgressStartHotfix, -}
-                                               {- releaseInProgressBad, -}
-                                               {- releaseInProgressGood, -}
-                                               {- releaseInProgressBugFoundBugIsFixed, -}
-                                               {- releaseInProgressBugFoundBugIsNotFixed) -}
+
+import           Integration.TestCases.Common (FakeWorldTestCase (..),
+                                               jackShit,
+                                               noReleaseInProgressStartRelease,
+                                               noReleaseInProgressStartHotfix,
+                                               releaseInProgressBad,
+                                               releaseInProgressGoodMinorRelease,
+                                               releaseInProgressGoodPatchRelease,
+                                               releaseInProgressBugFoundBugIsFixed,
+                                               releaseInProgressBugFoundBugIsNotFixed,
+                                               hotfixInProgressHotfixFixed,
+                                               hotfixInProgressHotfixNotFixed)
 
 makeLenses ''FakeWorldTestCase
 
@@ -33,29 +37,35 @@ makeLenses ''Output
 makeLenses ''World
 
 
--- fakeWorldIntegrationTestCases = [
---     [ testGroup "Blank State" [fakeWorldTestCase jackShit] ]
---   , [ testGroup "Hotfix in Progress"
---       fakeWorldTestCase hotfixCompleted
---     , fakeWorldTestCase hotfixNotCompleted
---     ]
---   , [ testGroup "No Release In Progress" [
---         fakeWorldTestCase noReleaseInProgressStartRelease
---       , fakeWorldTestCase noReleaseInProgressStartHotfix
---       ]
---     ]
---   , [ testGroup "Release in Progress" [
---         testGroup "No Bugfix in progress" [
---           fakeWorldTestCase releaseInProgressGood
---         , fakeWorldTestCase releaseInProgressBad
---         ]
---       , testGroup "Bugfix in progress" [
---           fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed
---         , fakeWorldTestCase releaseInProgressBugFoundBugIsFixed
---         ]
---       ]
---     ]
---   ]
+fakeWorldIntegrationTestCases = [
+    [ testGroup "Blank State" [fakeWorldTestCase jackShit] ]
+  , [ testGroup "Hotfix in Progress" [
+        fakeWorldTestCase hotfixInProgressHotfixFixed
+      , fakeWorldTestCase hotfixInProgressHotfixNotFixed
+      ]
+    ]
+  , [ testGroup "No Release In Progress" [
+        fakeWorldTestCase noReleaseInProgressStartRelease
+      , fakeWorldTestCase noReleaseInProgressStartHotfix
+      ]
+    ]
+  , [ testGroup "Release in Progress" [
+        testGroup "No Bugfix in progress" [
+          testGroup "Release is Good" [
+            fakeWorldTestCase releaseInProgressGoodMinorRelease
+          , fakeWorldTestCase releaseInProgressGoodPatchRelease
+          ]
+        , testGroup "Release is Bad" [
+            fakeWorldTestCase releaseInProgressBad
+          ]
+        ]
+      , testGroup "Bugfix in progress" [
+          fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed
+        , fakeWorldTestCase releaseInProgressBugFoundBugIsFixed
+        ]
+      ]
+    ]
+  ]
 
 fakeWorldTestCase :: FakeWorldTestCase -> TestTree
 fakeWorldTestCase tc = testCase (tc^.testDescription) $

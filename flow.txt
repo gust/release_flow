@@ -86,9 +86,12 @@ State: Release in progress
       - checkout release candidate tag
       - tag release
       - push tags
-      - Is release a hotfix?
+
+      ********** Hotfix Related ***************
+      - Is release a hotfix? (patch level increment from last release)
         - merge hotfix into integration --no--ff
         - push integration
+
       - let's you know what it did
       - tells you to deploy
 

@@ -9,6 +9,8 @@ module Tags (
   , getReleaseTagFromCandidate
   , isReleaseCandidateTag
   , getAllCandidatesForRelease
+  , getNextMinorReleaseCandidateTag
+  , getNextPatchReleaseCandidateTag
   )
   where
 
@@ -17,20 +19,23 @@ import           Data.Maybe (listToMaybe)
 
 import           Types
 
+nextMinorVersion :: Version -> Version
+nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) 0
+nextMinorVersion version = error $ "Concept unsupported for " ++ (show version)
+
+nextPatchVersion :: Version -> Version
+nextPatchVersion (SemVer major minor patch) = SemVer major minor (patch + 1)
+nextPatchVersion version = error $ "Concept unsupported for " ++ (show version)
 
 defaultReleaseCandidateTag = ReleaseCandidateTag (SemVer 0 0 0) 0
 defaultReleaseTag = ReleaseTag $ SemVer 0 0 0
 
-getNextReleaseCandidateTag :: Tag -> Tag
-getNextReleaseCandidateTag (ReleaseTag version) =
-  ReleaseCandidateTag nextRelease 1
-  where
-    nextRelease = nextMinorVersion version
-    nextMinorVersion :: Version -> Version
-    nextMinorVersion (SemVer major minor patch) = SemVer major (minor + 1) 0
-getNextReleaseCandidateTag (ReleaseCandidateTag version rc) =
-  ReleaseCandidateTag version (rc + 1)
+getNextReleaseCandidateTag :: (Version -> Version) -> Tag -> Tag
+getNextReleaseCandidateTag _                (ReleaseCandidateTag version rc) = ReleaseCandidateTag version (rc + 1)
+getNextReleaseCandidateTag incrementVersion (ReleaseTag version)             = ReleaseCandidateTag (incrementVersion version) 1
 
+getNextMinorReleaseCandidateTag = getNextReleaseCandidateTag nextMinorVersion
+getNextPatchReleaseCandidateTag = getNextReleaseCandidateTag nextPatchVersion
 
 latestFilteredTag :: (Tag -> Bool) -> [Tag] -> Maybe Tag
 latestFilteredTag tagsFilter = listToMaybe . reverseSort . filter tagsFilter

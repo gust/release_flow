@@ -41,7 +41,7 @@ releaseStateUnitTests = map (\(description, tags, branches, releaseState) ->
               , CiTag      $ UnixTimeVer 123
               ]
             , []
-            , ReleaseInProgress $ ReleaseCandidateTag (SemVer 1 3 0) 2
+            , ReleaseInProgress (ReleaseTag (SemVer 1 2 3)) (ReleaseCandidateTag (SemVer 1 3 0) 2)
           )
         , (   "release is in progress, no prior release tags"
             , [
@@ -49,7 +49,7 @@ releaseStateUnitTests = map (\(description, tags, branches, releaseState) ->
               , CiTag      $ UnixTimeVer 123
               ]
             , []
-            , ReleaseInProgress $ ReleaseCandidateTag (SemVer 1 3 0) 2
+            , ReleaseInProgress (ReleaseTag (SemVer 0 0 0)) (ReleaseCandidateTag (SemVer 1 3 0) 2)
           )
         , (   "release is in progress, bugfix in progress"
             , [
