@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Integration.Main (integrationTestCases) where
+module Integration.Main (fakeWorldIntegrationTestCases) where
 
 import           Test.Tasty                 (TestTree, testGroup)
 import           Test.Tasty.HUnit           (testCase, (@?=))
