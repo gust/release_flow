@@ -2,6 +2,7 @@ module Interpreter.IO
   (interpret)
 where
 
+import           Data.List                  (intercalate)
 import           Control.Applicative        ((<$>))
 import           Control.Error              (throwT)
 import           Control.Monad.IO.Class     (liftIO)
@@ -17,7 +18,7 @@ import           System.IO                  (stdout, hFlush)
 import           Interpreter.Commands       (Interaction (..), Program)
 import           Parser.Tag                 (parsedTags)
 import           Parser.Branch              (parsedBranches)
-import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..))
+import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..), promptMessage, commandMessage, Message)
 
 type EIO = EitherT ReleaseError IO
 
@@ -32,17 +33,19 @@ interpret (Free x) = case x of
   GitBranches f                             -> gitBranches                            >>= interpret . f
   GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
   GitPushTags remote x                      -> gitPushTags remote                     >>  interpret x
+  GitPush remote branch x                   -> gitPush remote branch                  >>  interpret x
   GitRemoveBranch branch x                  -> gitRemoveBranch branch                 >>  interpret x
   GitRemoveTag tag x                        -> gitRemoveTag tag                       >>  interpret x
   GitTag tag x                              -> gitTag tag                             >>  interpret x
-  GitMergeNoFF branch x                     -> gitMergeNoFF branch                    >>  interpret x
+  GitMergeNoFF commitish x                  -> gitMergeNoFF commitish                 >>  interpret x
+  GitPullRebase x                           -> gitPullRebase                          >>  interpret x
   OutputMessage message x                   -> outputMessage message                  >>  interpret x
   _                                         -> error $ "Interpreter Error: no match for command in IO interpreter: " ++ (show x)
 
   where
     getLineAfterPrompt :: String -> EIO String
     getLineAfterPrompt prompt = liftIO $ do
-      putStr $ prompt ++ " "
+      putStr $ (show . promptMessage) prompt ++ " "
       hFlush stdout
       getLine
 
@@ -67,6 +70,9 @@ interpret (Free x) = case x of
     gitPushTags :: String -> EIO ()
     gitPushTags remote = git ["push", remote, "--tags"] >> return ()
 
+    gitPush :: String -> Branch -> EIO ()
+    gitPush remote branch = git ["push", remote, show branch] >> return ()
+
     gitTag :: Tag -> EIO ()
     gitTag tag = git ["tag", show tag] >> return ()
 
@@ -78,9 +84,9 @@ interpret (Free x) = case x of
     gitRemoveBranch branch = do
       git ["branch", "-d", show branch] >> git_ ["push", "origin", ":" ++ (show branch)] >> return ()
 
-    gitMergeNoFF :: Branch -> EIO ()
-    gitMergeNoFF branch = do
-      git ["merge", "--no-ff", show branch] >> return ()
+    gitMergeNoFF :: Show a => a -> EIO ()
+    gitMergeNoFF commitish = do
+      git ["merge", "--no-ff", show commitish] >> return ()
 
 
     git :: [String] -> EIO String
@@ -97,11 +103,15 @@ interpret (Free x) = case x of
 
     exec :: String -> [String] -> EIO (Either String String)
     exec cmd args = do
+      outputMessage $ commandMessage (intercalate " " $ [cmd] ++ args)
       result <- liftIO $ readProcessWithExitCode cmd args ""
       case result of
         (ExitSuccess, stdout, _)  -> return $ Right stdout
         (ExitFailure _, _, err)   -> return $ Left err
 
-    outputMessage :: String -> EIO ()
-    outputMessage = liftIO . putStrLn
+    gitPullRebase :: EIO ()
+    gitPullRebase = git ["pull", "--rebase"] >> return ()
+
+    outputMessage :: Message -> EIO ()
+    outputMessage = liftIO . putStrLn . show
 
