@@ -21,6 +21,7 @@ import           Integration.TestCases.Common (FakeWorldTestCase (..),
                                                jackShit,
                                                noReleaseInProgressStartRelease,
                                                noReleaseInProgressStartHotfix,
+                                               releaseInProgressPreemptWithHotfix,
                                                releaseInProgressBad,
                                                releaseInProgressGoodMinorRelease,
                                                releaseInProgressGoodPatchRelease,
@@ -48,18 +49,23 @@ fakeWorldIntegrationTestCases = [
       ]
     ]
   , [ testGroup "Release in Progress" [
-        testGroup "No Bugfix in progress" [
-          testGroup "Release is Good" [
-            fakeWorldTestCase releaseInProgressGoodMinorRelease
-          , fakeWorldTestCase releaseInProgressGoodPatchRelease
-          ]
-        , testGroup "Release is Bad" [
-            fakeWorldTestCase releaseInProgressBad
-          ]
+        testGroup "Pre-empt with Hotfix" [
+          fakeWorldTestCase releaseInProgressPreemptWithHotfix
         ]
-      , testGroup "Bugfix in progress" [
-          fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed
-        , fakeWorldTestCase releaseInProgressBugFoundBugIsFixed
+      , testGroup "Continue Release" [
+          testGroup "No Bugfix in progress" [
+            testGroup "Release is Good" [
+              fakeWorldTestCase releaseInProgressGoodMinorRelease
+            , fakeWorldTestCase releaseInProgressGoodPatchRelease
+            ]
+          , testGroup "Release is Bad" [
+              fakeWorldTestCase releaseInProgressBad
+            ]
+          ]
+        , testGroup "Bugfix in progress" [
+            fakeWorldTestCase releaseInProgressBugFoundBugIsNotFixed
+          , fakeWorldTestCase releaseInProgressBugFoundBugIsFixed
+          ]
         ]
       ]
     ]

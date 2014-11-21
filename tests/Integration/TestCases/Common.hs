@@ -3,6 +3,7 @@ module Integration.TestCases.Common
     jackShit
   , noReleaseInProgressStartRelease
   , noReleaseInProgressStartHotfix
+  , releaseInProgressPreemptWithHotfix
   , releaseInProgressGoodMinorRelease
   , releaseInProgressGoodPatchRelease
   , releaseInProgressBad
@@ -159,6 +160,35 @@ noReleaseInProgressStartRelease = FakeWorldTestCase {
         ]
     , _oStdErr = [ ]
     }
+}
+
+releaseInProgressPreemptWithHotfix = FakeWorldTestCase {
+    _testDescription = "Release in progress, but we need to release a hotfix immediately"
+
+  , _input = defaultInput {
+      _iTags = [
+        ReleaseCandidateTag (SemVer 1 2 4) 2
+      , ReleaseTag $ SemVer 1 2 3
+      , CiTag      $ UnixTimeVer 123
+      ]
+    , _iUserInput = [
+        ("Choose your adventure: Continue release (0), Start hotfix (1)", "1")
+      , ("What is the hotfix for? (specify dash separated descriptor, e.g. 'signup-is-broken')", "hot-fixing")
+      ]
+    }
+
+  , _expectedOutput = initialOutput {
+      _oCommands = [
+          "git tags"
+        , "git branch"
+        , "git checkout release/1.2.3"
+        , "git checkout -b release/1.2.3/hotfix/hot-fixing"
+        ]
+    , _oStdOut  = [
+          "Started hotfix: release/1.2.3/hotfix/hot-fixing, fix stuff!"
+        ]
+    , _oStdErr = [ ]
+  }
 }
 
 releaseInProgressGoodMinorRelease = FakeWorldTestCase {
