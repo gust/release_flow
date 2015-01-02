@@ -7,7 +7,7 @@ import           Control.Applicative               ((<$>))
 import           Control.Monad                     ((<=<))
 import           Control.Monad.Trans.Class         (lift)
 import           Control.Monad.Trans.Either        (hoistEither, runEitherT, EitherT(..))
-import           Data.Maybe                        (fromMaybe, fromJust, listToMaybe, isNothing)
+import           Data.Maybe                        (fromMaybe, listToMaybe, isNothing)
 import           Data.List                         (isPrefixOf, intercalate)
 
 import           Types                             (Branch (..),

@@ -3,6 +3,7 @@
 module Parser.Tag
   (
     parsedTags
+  , tagParser
   )
   where
 
@@ -27,11 +28,13 @@ parsedTags =
     handleError (Right x) = x
 
 tagsParser :: Parser [Tag]
-tagsParser = catMaybes <$> (many $
-      (try releaseCandidateTagParser)
+tagsParser = catMaybes <$> many tagParser
+
+tagParser :: Parser (Maybe Tag)
+tagParser = (try releaseCandidateTagParser)
   <|> (try releaseTagParser)
-  <|> ciTagParser
-  <|> crapParser)
+  <|> (try ciTagParser)
+  <|> crapParser
 
 
 releaseCandidateTagParser :: Parser (Maybe Tag)

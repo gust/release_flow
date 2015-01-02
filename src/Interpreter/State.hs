@@ -16,7 +16,7 @@ import           Control.Error              (throwT)
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Monad.Trans.Either (EitherT, hoistEither)
 import qualified Data.Map                   as M
-import           Data.Maybe                 (fromJust)
+import           Data.Maybe                 (fromMaybe)
 
 import           Control.Monad.Free         (Free (..))
 import           Control.Monad.State.Strict (State, get, put, runState)
@@ -89,7 +89,7 @@ interpret (Free x) = case x of
     getLineAfterPrompt :: String -> ES String
     getLineAfterPrompt prompt = do
       w <- get
-      return $ fromJust $ M.lookup prompt $ M.fromList $ w^.wInput.iUserInput
+      return $ fromMaybe (error $ show $ "could not find expected prompt: " ++ prompt) $ M.lookup prompt $ M.fromList $ w^.wInput.iUserInput
 
     gitCheckoutBranch :: Branch -> ES ()
     gitCheckoutBranch branch =

@@ -32,6 +32,7 @@ executable flow
     , lens
     , containers
     , prelude-safeenum
+    , text
 
 -- cabal install with tests support:
 -- cabal install --enable-tests
@@ -63,4 +64,8 @@ test-suite Tasty
     , lens
     , containers
     , prelude-safeenum
+    , yaml
+    , aeson
+    , text
+    , bytestring
 

@@ -1,46 +1,28 @@
-{- import Test.Tasty.SmallCheck as SC -}
-{- import Test.Tasty.QuickCheck as QC -}
-import           Test.Tasty        (TestTree, defaultMain, testGroup)
+{-# LANGUAGE ScopedTypeVariables #-}
 
-import           Integration.Main  (fakeWorldIntegrationTestCases)
+import           Test.Tasty
+
+import           Integration.Main
 import           Unit.Parsers.Tags (tagsParsersUnitTests)
 import           Unit.ReleaseState (releaseStateUnitTests)
 import           Unit.Tags         (getAllCandidatesForReleaseUnitTests)
 
-main = defaultMain tests
+import Control.Applicative ((<$>))
+import Data.Yaml (decode)
+import qualified Data.ByteString as BS
+
+main = do
+  let specFile = "spec.yaml"
+  (maybeIntegrationTestCases :: Maybe TestCase) <- decode <$> BS.readFile specFile
+  case maybeIntegrationTestCases of
+    Just testCases -> defaultMain $ testGroup "Tests" [allTests testCases]
+    Nothing -> error $ "Could not parse " ++ specFile
+  
   where
-    tests :: TestTree
-    {- tests = testGroup "Tests" [properties, unitTests] -}
-    tests = testGroup "Tests" [allTests]
-
-    {- properties :: TestTree -}
-    {- properties = testGroup "Properties" [scProps, qcProps] -}
-
-    {- scProps = testGroup "(checked by SmallCheck)" -}
-      {- [ SC.testProperty "sort == sort . reverse" $ -}
-          {- \list -> sort (list :: [Int]) == sort (reverse list) -}
-      {- , SC.testProperty "Fermat's little theorem" $ -}
-          {- \x -> ((x :: Integer)^7 - x) `mod` 7 == 0 -}
-      {- -- the following property does not hold -}
-      {- , SC.testProperty "Fermat's last theorem" $ -}
-          {- \x y z n -> -}
-            {- (n :: Integer) >= 3 SC.==> x^n + y^n /= (z^n :: Integer) -}
-      {- ] -}
-
-    {- qcProps = testGroup "(checked by QuickCheck)" -}
-      {- [ QC.testProperty "sort == sort . reverse" $ -}
-          {- \list -> sort (list :: [Int]) == sort (reverse list) -}
-      {- , QC.testProperty "Fermat's little theorem" $ -}
-          {- \x -> ((x :: Integer)^7 - x) `mod` 7 == 0 -}
-      {- -- the following property does not hold -}
-      {- , QC.testProperty "Fermat's last theorem" $ -}
-          {- \x y z n -> -}
-            {- (n :: Integer) >= 3 QC.==> x^n + y^n /= (z^n :: Integer) -}
-      {- ] -}
-
+    allTests testCases = testGroup "Tasty Tests" [unitTests, integrationTests testCases]
       where
-        allTests = testGroup "Tasty Tests" [unitTests, integrationTests]
-          where
-            unitTests = testGroup "HUnit Tests" $ concat [tagsParsersUnitTests, releaseStateUnitTests, getAllCandidatesForReleaseUnitTests]
-            integrationTests = testGroup "Integration Tests" $ concat fakeWorldIntegrationTestCases
+        unitTests = testGroup "HUnit Tests" $ concat [tagsParsersUnitTests, releaseStateUnitTests, getAllCandidatesForReleaseUnitTests]
+        integrationTests testCases = testGroup "Integration Tests" $ [integrationTestTree testCases]
+
+
 
