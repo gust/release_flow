@@ -33,6 +33,9 @@ executable flow
     , containers
     , prelude-safeenum
     , text
+    , aeson
+    , bytestring
+    , HStringTemplate
 
 -- cabal install with tests support:
 -- cabal install --enable-tests
@@ -42,6 +45,8 @@ executable flow
 -- cabal configure --enable-tests
 -- cabal build
 -- cabal test
+
+
 
 test-suite Tasty
   default-language: Haskell2010
@@ -68,4 +73,5 @@ test-suite Tasty
     , aeson
     , text
     , bytestring
+    , HStringTemplate
 

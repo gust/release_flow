@@ -19,6 +19,7 @@ import           Parser.Tag                 (parsedTags)
 import           Parser.Branch              (parsedBranches)
 import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..))
 
+
 type EIO = EitherT ReleaseError IO
 
 interpret :: Program a -> EIO a

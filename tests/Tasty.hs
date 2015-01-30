@@ -8,21 +8,21 @@ import           Unit.ReleaseState (releaseStateUnitTests)
 import           Unit.Tags         (getAllCandidatesForReleaseUnitTests)
 
 import Control.Applicative ((<$>))
-import Data.Yaml (decode)
+import Data.Yaml (decodeEither)
 import qualified Data.ByteString as BS
 
 main = do
   let specFile = "spec.yaml"
-  (maybeIntegrationTestCases :: Maybe TestCase) <- decode <$> BS.readFile specFile
-  case maybeIntegrationTestCases of
-    Just testCases -> defaultMain $ testGroup "Tests" [allTests testCases]
-    Nothing -> error $ "Could not parse " ++ specFile
+  (eitherIntegrationTestCases :: Either String TopLevelSpec) <- decodeEither <$> BS.readFile specFile
+  case eitherIntegrationTestCases of
+    Right (TopLevelSpec config testCases) -> defaultMain $ testGroup "Tests" [allTests config testCases]
+    Left err -> error $ "Could not parse " ++ specFile ++ ": " ++ (show err)
   
   where
-    allTests testCases = testGroup "Tasty Tests" [unitTests, integrationTests testCases]
+    allTests config testCases = testGroup "Tasty Tests" [unitTests, integrationTests config testCases]
       where
         unitTests = testGroup "HUnit Tests" $ concat [tagsParsersUnitTests, releaseStateUnitTests, getAllCandidatesForReleaseUnitTests]
-        integrationTests testCases = testGroup "Integration Tests" $ [integrationTestTree testCases]
+        integrationTests config testCases = testGroup "Integration Tests" $ [integrationTestTree config testCases]
 
 
 

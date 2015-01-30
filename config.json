@@ -1,0 +1,4 @@
+{
+  "integrationBranch": "integration",
+  "deployCommand": "rake $environment$ deploy[$tag$]"
+}

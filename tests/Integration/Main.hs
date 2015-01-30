@@ -21,6 +21,8 @@ import           Interpreter.State          (Input (..), Output (..),
                                              World (..), defaultInput,
                                              defaultWorld, initialOutput,
                                              interpret)
+import Interpreter.Commands (Config(..))
+
 import           Program.Release            (program, runProgram)
 import           Types                      (Branch (..), Tag (..), Version (..))
 
@@ -30,6 +32,11 @@ import Parser.Tag (tagParser)
 import Text.ParserCombinators.Parsec (parse)
 
 type Command = String
+
+data TopLevelSpec = TopLevelSpec {
+    _tlsConfig   :: Config
+  , _tlsTestCase :: TestCase
+} deriving Show
 
 data TestCase = TestCase {
     _tcName      :: String
@@ -74,6 +81,15 @@ instance Monoid SpecInput where
 deepAppend :: Monoid a => Maybe a -> Maybe a -> Maybe a
 deepAppend (Just a1) (Just a2) = Just $ a1 <> a2
 deepAppend maybe1 maybe2 = maybe1 <> maybe2
+
+
+instance FromJSON TopLevelSpec where
+  parseJSON (Object v) = TopLevelSpec  
+                          <$> v .:  "config" 
+                          <*> v .:  "tests" 
+-- A non-Object value is of the wrong type, so fail.
+  parseJSON _ = error "Can't parse TopLevelSpec from YAML/JSON"
+
 
 instance FromJSON TestCase where
   parseJSON (Object v) = TestCase  
@@ -158,21 +174,21 @@ toOutput (Just so) = Output{
   }
 
 
-integrationTestTree :: TestCase -> TestTree
+integrationTestTree :: Config -> TestCase -> TestTree
 integrationTestTree = inheritedTestTree mempty
 
-inheritedTestTree :: Spec -> TestCase -> TestTree
+inheritedTestTree :: Spec -> Config -> TestCase -> TestTree
 
-inheritedTestTree _ tc@TestCase{_tcTestCases = Nothing, _tcSpec = Nothing } = 
+inheritedTestTree _ _ tc@TestCase{_tcTestCases = Nothing, _tcSpec = Nothing } = 
   failAssertion "Test case must have a spec or be a group of test cases"
 
-inheritedTestTree parentSpec tc@TestCase{_tcTestCases = Just tcs,     _tcSpec = Nothing} = 
-  testGroup (tc^.tcName) $ map (inheritedTestTree parentSpec) tcs
+inheritedTestTree parentSpec config tc@TestCase{_tcTestCases = Just tcs,     _tcSpec = Nothing} = 
+  testGroup (tc^.tcName) $ map (inheritedTestTree parentSpec config) tcs
 
-inheritedTestTree parentSpec tc@TestCase{_tcTestCases = Just tcs,     _tcSpec = (Just spec)} = 
-  testGroup (tc^.tcName) $ map (inheritedTestTree (parentSpec <> spec)) tcs
+inheritedTestTree parentSpec config tc@TestCase{_tcTestCases = Just tcs,     _tcSpec = (Just spec)} = 
+  testGroup (tc^.tcName) $ map (inheritedTestTree (parentSpec <> spec) config) tcs
 
-inheritedTestTree parentSpec tc@TestCase{_tcTestCases = Nothing, _tcSpec = Just spec} = testCase (tc^.tcName) $
+inheritedTestTree parentSpec config tc@TestCase{_tcTestCases = Nothing, _tcSpec = Just spec} = testCase (tc^.tcName) $
   (run (toInput $ (parentSpec <> spec)^.sInput)) @?= (toOutput $ spec^.sOutput)
   where
     run :: Input -> Output
@@ -187,7 +203,7 @@ inheritedTestTree parentSpec tc@TestCase{_tcTestCases = Nothing, _tcSpec = Just 
                 }
 
                 stateInterpretation :: State World ()
-                stateInterpretation = runProgram interpret program >>= either (logError . show) return
+                stateInterpretation = runProgram interpret (program config) >>= either (logError . show) return
 
                 logError :: String -> State World ()
                 logError msg = wOutput.oStdErr %= (\existing -> existing ++ [msg])

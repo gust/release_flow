@@ -9,6 +9,8 @@ import           Control.Monad.Trans.Class         (lift)
 import           Control.Monad.Trans.Either        (hoistEither, runEitherT, EitherT(..))
 import           Data.Maybe                        (fromMaybe, listToMaybe, isNothing)
 import           Data.List                         (isPrefixOf, intercalate)
+import Control.Monad.Reader (runReaderT, ask)
+import Text.StringTemplate (newSTMP, render, setAttribute)
 
 import           Types                             (Branch (..),
                                                     Environment (..),
@@ -17,7 +19,7 @@ import           Types                             (Branch (..),
                                                     tmpBranch,
                                                     ReleaseError(..))
 
-import           Interpreter.Commands              (EP, Program,
+import           Interpreter.Commands              (REP, Program, Config(..),
                                                     outputMessage,
                                                     getLineAfterPrompt,
                                                     gitCheckoutNewBranchFromTag,
@@ -74,12 +76,11 @@ instance Show Adventure where
   show StartNewRelease = "Start new release"
   show StartHotfix = "Start hotfix"
 
-program :: Program (Either ReleaseError ())
-program = do
-  runEitherT release
+program :: Config -> Program (Either ReleaseError ())
+program = runEitherT . runReaderT release
 
   where
-    release :: EP ()
+    release :: REP ()
     release = do
       tags <- gitTags
       branches <- gitBranches
@@ -87,6 +88,8 @@ program = do
         ReleaseInProgress latestReleaseCandidate -> do
           outputMessage $ "Release candidate found: " ++ (show latestReleaseCandidate)
           yesOrNo <- promptForYesOrNo "Is this release candidate good? y(es)/n(o)"
+
+
           case yesOrNo of
             True -> releaseCandidate latestReleaseCandidate
             False -> do
@@ -100,14 +103,21 @@ program = do
         NoReleaseInProgress latestReleaseTag -> do
           -- ask whether to do a new release or a hotfix
           choice <- promptForChoice "Choose your adventure" [StartNewRelease, StartHotfix]
+
+
           case choice of
             StartNewRelease -> do
               -- checkout latest green build
-              lastGreenTag <- hoistEither $ maybeToEither (ProgramExpectationError "Could not find latest green tag") $ latestFilteredTag ciTagFilter tags
+              lastGreenTag <- lift $ hoistEither $ maybeToEither (ProgramExpectationError "Could not find latest green tag") $ latestFilteredTag ciTagFilter tags
               gitCheckoutTag lastGreenTag
               let releaseCandidateTag = getNextReleaseCandidateTag latestReleaseTag
               gitTag releaseCandidateTag
-              outputMessage $ "Started new release: " ++ show releaseCandidateTag ++ ", deploy to preproduction and confirm the release is good to go!"
+              outputMessage $ "Started new release: " ++ show releaseCandidateTag
+              outputMessage $ "Deploy to preproduction and confirm the release is good to go!"
+
+              command <- (newSTMP . deployCommand) <$> ask 
+              outputMessage $ render $ setAttribute "environment" "preproduction" $ setAttribute "tag" (show releaseCandidateTag) command
+
               gitPushTags "origin"
             StartHotfix -> do
               hotfixName <- getLineAfterPrompt "What is the hotfix for? (specify dash separated descriptor, e.g. 'signup-is-broken')"
@@ -135,7 +145,7 @@ program = do
               outputMessage "Keep fixing that code!"
 
       where
-        promptForChoice :: (Show a, Enum a, Bounded a) => String -> [a] -> EP a
+        promptForChoice :: (Show a, Enum a, Bounded a) => String -> [a] -> REP a
         promptForChoice prompt choices = do
           parseChoice <$> (getLineAfterPrompt promptWithChoices) >>= (maybe (promptForChoice prompt choices) return)
           where
@@ -154,11 +164,16 @@ program = do
           gitTag releaseTag
           gitPushTags "origin"
           gitCheckoutTag releaseTag
-          outputMessage $ "Created tag: " ++ (show releaseTag) ++ ", deploy to production cowboy!"
+          outputMessage $ "Created tag: " ++ (show releaseTag)
+          outputMessage $ "Deploy to production, cowboy!"
+          
+          command <- (newSTMP . deployCommand) <$> ask 
+          outputMessage $ render $ setAttribute "environment" "production" $ setAttribute "tag" (show releaseTag) command
+
 
         maybeToEither = flip maybe Right . Left
 
-        promptForYesOrNo :: String -> EP Bool
+        promptForYesOrNo :: String -> REP Bool
         promptForYesOrNo prompt = do
           parseYesOrNo <$> (getLineAfterPrompt prompt) >>= (maybe (promptForYesOrNo prompt) return)
 
