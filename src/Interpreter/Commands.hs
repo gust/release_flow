@@ -129,7 +129,7 @@ gitMergeNoFF commitish = lift $ liftF $ GitMergeNoFF commitish ()
 outputMessage :: Message -> REP ()
 outputMessage message = lift $ liftF $ OutputMessage message ()
 
-gitPullRebase :: EP ()
+gitPullRebase :: REP ()
 gitPullRebase = lift $ liftF $ GitPullRebase ()
 
 

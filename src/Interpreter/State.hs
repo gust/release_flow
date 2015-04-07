@@ -25,7 +25,7 @@ import           Control.Lens               (makeLenses, (%=), (^.))
 import           Data.Functor               ((<$>))
 import           Interpreter.Commands       (Interaction (..), Program)
 import           Parser.Tag                 (parsedTags)
-import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..))
+import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..), Message)
 
 data Input = Input {
     _iTags      :: [Tag]
@@ -156,6 +156,6 @@ interpret (Free x) = case x of
     gitPullRebase = 
       wOutput . oCommands %= (++ ["git pull --rebase"])
 
-    outputMessage :: String -> ES ()
-    outputMessage message = wOutput . oStdOut %= (++ [message])
+    outputMessage :: Message -> ES ()
+    outputMessage message = wOutput . oStdOut %= (++ [show message])
 
