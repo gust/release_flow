@@ -84,7 +84,7 @@ interpret (Free x) = case x of
   GitTag tag x                              -> gitTag tag                             >>  interpret x
   GitMergeNoFF commitish x                  -> gitMergeNoFF commitish                 >>  interpret x
   GitPullRebase x                           -> gitPullRebase                          >>  interpret x
-  OutputMessage message x                   -> outputMessage message                  >>  interpret x
+  OutputMessage message x                   -> logMessage message                     >>  interpret x
   _                                         -> error $ "Interpreter Error: no match for command in State interpreter: " ++ (show x)
 
   where
@@ -156,6 +156,6 @@ interpret (Free x) = case x of
     gitPullRebase = 
       wOutput . oCommands %= (++ ["git pull --rebase"])
 
-    outputMessage :: Message -> ES ()
-    outputMessage message = wOutput . oStdOut %= (++ [show message])
+    logMessage :: String -> ES ()
+    logMessage message = wOutput . oStdOut %= (++ [message])
 

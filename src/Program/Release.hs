@@ -96,7 +96,7 @@ program = runEitherT . runReaderT release
       branches <- gitBranches
       case determineReleaseState tags branches of
         ReleaseInProgress latestReleaseTag latestReleaseCandidate -> do
-          outputMessage $ infoMessage $  "Release candidate found: " ++ (show latestReleaseCandidate)
+          outputMessage $ "Release candidate found: " ++ (show latestReleaseCandidate)
           yesOrNo <- promptForYesOrNo "Is this release candidate good? y(es)/n(o)"
 
 
@@ -108,7 +108,7 @@ program = runEitherT . runReaderT release
               gitCheckoutTag latestReleaseCandidate
               gitCreateAndCheckoutBranch $ tmpBranch latestReleaseCandidate
               gitCreateAndCheckoutBranch bugFixBranch
-              outputMessage $ infoMessage $  "Created branch: " ++ (show bugFixBranch) ++ ", fix your bug!"
+              outputMessage $ "Created branch: " ++ (show bugFixBranch) ++ ", fix your bug!"
 
         NoReleaseInProgress latestReleaseTag -> do
           -- ask whether to do a new release or a hotfix
@@ -122,20 +122,20 @@ program = runEitherT . runReaderT release
               gitCheckoutTag lastGreenTag
               let releaseCandidateTag = getNextMinorReleaseCandidateTag latestReleaseTag
               gitTag releaseCandidateTag
-              outputMessage $ infoMessage $ "Started new release: " ++ show releaseCandidateTag 
-              outputMessage $ infoMessage $ "Deploy to preproduction and confirm the release is good to go!"
+              outputMessage $ "Started new release: " ++ show releaseCandidateTag 
+              outputMessage $ "Deploy to preproduction and confirm the release is good to go!"
               command <- (newSTMP . deployCommand) <$> ask 
-              outputMessage $ infoMessage $ render $ setAttribute "environment" "preproduction" $ setAttribute "tag" (show releaseCandidateTag) command
+              outputMessage $ render $ setAttribute "environment" "preproduction" $ setAttribute "tag" (show releaseCandidateTag) command
               gitPushTags "origin"
             StartHotfix -> do
               hotfixName <- getLineAfterPrompt "What is the hotfix for? (specify dash separated descriptor, e.g. 'signup-is-broken')"
               gitCheckoutTag latestReleaseTag
               let hotfixBranch = Branch ((show latestReleaseTag) ++ "/hotfix/" ++ hotfixName)
               gitCreateAndCheckoutBranch hotfixBranch 
-              outputMessage $ infoMessage $  "Started hotfix: " ++ (show hotfixBranch) ++ ", fix stuff!"
+              outputMessage $ "Started hotfix: " ++ (show hotfixBranch) ++ ", fix stuff!"
 
         ReleaseInProgressBugfix latestReleaseCandidate branch -> do
-          outputMessage $ infoMessage $  "Bugfix found: " ++ show branch
+          outputMessage $ "Bugfix found: " ++ show branch
           yesOrNo <- promptForYesOrNo "Is the bug fixed? y(es)/n(o)"
           case yesOrNo of
             True -> do
@@ -144,16 +144,16 @@ program = runEitherT . runReaderT release
               gitRemoveBranch branch
               let nextReleaseCandidateTag = getNextMinorReleaseCandidateTag latestReleaseCandidate
               gitTag $ nextReleaseCandidateTag
-              outputMessage $ infoMessage $  "Created new release candidate: " ++ show nextReleaseCandidateTag ++ ", you'll get it this time!"
+              outputMessage $ "Created new release candidate: " ++ show nextReleaseCandidateTag ++ ", you'll get it this time!"
               gitPushTags "origin"
               gitCheckoutTag nextReleaseCandidateTag
               gitRemoveBranch $ tmpBranch latestReleaseCandidate
             False -> do
               gitCheckoutBranch branch
-              outputMessage $ infoMessage "Keep fixing that code!"
+              outputMessage "Keep fixing that code!"
 
         HotfixInProgress releaseTag hotfixBranch -> do
-          outputMessage $ infoMessage $  "Hotfix found: " ++ show hotfixBranch
+          outputMessage $ "Hotfix found: " ++ show hotfixBranch
           gitCheckoutBranch hotfixBranch
           yesOrNo <- promptForYesOrNo "Is the hotfix complete? y(es)/n(o)"
           case yesOrNo of
@@ -163,10 +163,11 @@ program = runEitherT . runReaderT release
               gitPushTags "origin" -- "git push --tags"
               gitCheckoutTag nextReleaseCandidateTag -- "git checkout release/1.2.4-rc1"
               gitRemoveBranch hotfixBranch -- "git branch -d release/1.2.3/hotfix/hot-fixing", "git push origin :release/1.2.3/hotfix/hot-fixing"
-              outputMessage $ infoMessage $  "Started new release: " ++ show nextReleaseCandidateTag ++ ", deploy to preproduction and confirm the release is good to go!"
+              outputMessage $ "Started new release: " ++ show nextReleaseCandidateTag
+              outputMessage $ "Deploy to preproduction and confirm the release is good to go!"
 
             False -> do
-              outputMessage $ infoMessage "Keep fixing that code!"
+              outputMessage "Keep fixing that code!"
 
 
         unhandledState -> error $ "State is not handled: " ++ show unhandledState
@@ -211,15 +212,19 @@ program = runEitherT . runReaderT release
               gitPush "origin" integration
 
               gitCheckoutTag releaseTag
-              outputMessage $ infoMessage $  "Created tag: " ++ (show releaseTag) ++ ", deploy to production cowboy!"
+              outputReleaseMessages releaseTag
               command <- (newSTMP . deployCommand) <$> ask 
-              outputMessage $ infoMessage $ render $ setAttribute "environment" "production" $ setAttribute "tag" (show releaseTag) command
+              outputMessage $ render $ setAttribute "environment" "production" $ setAttribute "tag" (show releaseTag) command
 
             else do
               gitCheckoutTag releaseTag
-              outputMessage $ infoMessage $  "Created tag: " ++ (show releaseTag) ++ ", deploy to production cowboy!"
+              outputReleaseMessages releaseTag
               command <- (newSTMP . deployCommand) <$> ask 
-              outputMessage $ infoMessage $ render $ setAttribute "environment" "production" $ setAttribute "tag" (show releaseTag) command
+              outputMessage $ render $ setAttribute "environment" "production" $ setAttribute "tag" (show releaseTag) command
+
+        outputReleaseMessages releaseTag = do
+          outputMessage $ "Created tag: " ++ (show releaseTag)
+          outputMessage "Deploy to production cowboy!"
 
         maybeToEither = flip maybe Right . Left
 

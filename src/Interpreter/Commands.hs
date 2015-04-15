@@ -34,7 +34,7 @@ data Interaction x
   | GitTag Tag x
   | forall a. Show a => GitMergeNoFF a x
   | GitPullRebase x
-  | OutputMessage Message x
+  | OutputMessage String x
 
 instance Functor Interaction where
   fmap f (GetLineAfterPrompt s g)              = GetLineAfterPrompt s (fmap f g)
@@ -126,7 +126,7 @@ gitRemoveBranch branch = lift $ liftF $ GitRemoveBranch branch ()
 gitMergeNoFF :: Show a => a -> REP ()
 gitMergeNoFF commitish = lift $ liftF $ GitMergeNoFF commitish ()
 
-outputMessage :: Message -> REP ()
+outputMessage :: String -> REP ()
 outputMessage message = lift $ liftF $ OutputMessage message ()
 
 gitPullRebase :: REP ()

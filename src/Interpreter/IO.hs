@@ -18,7 +18,7 @@ import           System.IO                  (stdout, hFlush)
 import           Interpreter.Commands       (Interaction (..), Program)
 import           Parser.Tag                 (parsedTags)
 import           Parser.Branch              (parsedBranches)
-import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..), promptMessage, commandMessage, Message)
+import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..), promptMessage, infoMessage, commandMessage, Message)
 
 
 type EIO = EitherT ReleaseError IO
@@ -40,7 +40,7 @@ interpret (Free x) = case x of
   GitTag tag x                              -> gitTag tag                             >>  interpret x
   GitMergeNoFF commitish x                  -> gitMergeNoFF commitish                 >>  interpret x
   GitPullRebase x                           -> gitPullRebase                          >>  interpret x
-  OutputMessage message x                   -> outputMessage message                  >>  interpret x
+  OutputMessage message x                   -> (logMessage . infoMessage) message     >>  interpret x
   _                                         -> error $ "Interpreter Error: no match for command in IO interpreter: " ++ (show x)
 
   where
@@ -104,7 +104,7 @@ interpret (Free x) = case x of
 
     exec :: String -> [String] -> EIO (Either String String)
     exec cmd args = do
-      outputMessage $ commandMessage (intercalate " " $ [cmd] ++ args)
+      logMessage $ commandMessage (intercalate " " $ [cmd] ++ args)
       result <- liftIO $ readProcessWithExitCode cmd args ""
       case result of
         (ExitSuccess, stdout, _)  -> return $ Right stdout
@@ -113,6 +113,6 @@ interpret (Free x) = case x of
     gitPullRebase :: EIO ()
     gitPullRebase = git ["pull", "--rebase"] >> return ()
 
-    outputMessage :: Message -> EIO ()
-    outputMessage = liftIO . putStrLn . show
+    logMessage :: Message -> EIO ()
+    logMessage = liftIO . putStrLn . show
 
