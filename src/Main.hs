@@ -23,10 +23,10 @@ import Interpreter.Commands (Config(..))
 
 main :: IO ()
 main = do
-  jsonConfig <- BL.readFile "config.json" 
+  jsonConfig <- BL.readFile "flow_config.json" 
   case decode jsonConfig of
     Nothing -> do
-      putStrLn "could not parse config.json"
+      putStrLn "could not parse flow_config.json"
     Just config -> do
       runProgram interpret (program config) >>= either (logError . show) return where
       logError = hPutStrLn stderr
