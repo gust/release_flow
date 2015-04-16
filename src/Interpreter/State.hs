@@ -16,7 +16,7 @@ import           Control.Error              (throwT)
 import           Control.Monad.Trans.Class  (lift)
 import           Control.Monad.Trans.Either (EitherT, hoistEither)
 import qualified Data.Map                   as M
-import           Data.Maybe                 (fromMaybe)
+import           Data.List                  (intercalate)
 
 import           Control.Monad.Free         (Free (..))
 import           Control.Monad.State.Strict (State, get, put, runState)
@@ -25,7 +25,7 @@ import           Control.Lens               (makeLenses, (%=), (^.))
 import           Data.Functor               ((<$>))
 import           Interpreter.Commands       (Interaction (..), Program)
 import           Parser.Tag                 (parsedTags)
-import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..))
+import           Types                      (Branch (..), Environment (..), Tag, ReleaseError(..), Message)
 
 data Input = Input {
     _iTags      :: [Tag]
@@ -78,18 +78,25 @@ interpret (Free x) = case x of
   GitBranches f                             -> gitBranches                            >>= interpret . f
   GitCheckoutNewBranchFromTag branch tag x  -> gitCheckoutNewBranchFromTag branch tag >>  interpret x
   GitPushTags remote x                      -> gitPushTags remote                     >>  interpret x
+  GitPush remote branch x                   -> gitPush remote branch                  >>  interpret x
   GitRemoveBranch branch x                  -> gitRemoveBranch branch                 >>  interpret x
   GitRemoveTag tag x                        -> gitRemoveTag tag                       >>  interpret x
   GitTag tag x                              -> gitTag tag                             >>  interpret x
-  GitMergeNoFF branch x                     -> gitMergeNoFF branch                    >>  interpret x
-  OutputMessage message x                   -> outputMessage message                  >>  interpret x
+  GitMergeNoFF commitish x                  -> gitMergeNoFF commitish                 >>  interpret x
+  GitPullRebase x                           -> gitPullRebase                          >>  interpret x
+  OutputMessage message x                   -> logMessage message                     >>  interpret x
   _                                         -> error $ "Interpreter Error: no match for command in State interpreter: " ++ (show x)
 
   where
     getLineAfterPrompt :: String -> ES String
     getLineAfterPrompt prompt = do
       w <- get
-      return $ fromMaybe (error $ show $ "could not find expected prompt: " ++ prompt) $ M.lookup prompt $ M.fromList $ w^.wInput.iUserInput
+      case M.lookup prompt (promptToAnswerMap w) of
+        Just answer -> return answer
+        Nothing -> error $ "No corresponding input for prompt: \"" ++ prompt ++ "\", available prompts are:\n" ++ intercalate "\n" (map (\s -> "\t- " ++ s) (availablePrompts w))
+      where
+        promptToAnswerMap w = M.fromList $ w^.wInput.iUserInput
+        availablePrompts w = M.keys (promptToAnswerMap w) :: [String]
 
     gitCheckoutBranch :: Branch -> ES ()
     gitCheckoutBranch branch =
@@ -120,8 +127,12 @@ interpret (Free x) = case x of
       wOutput . oCommands %= (++ ["checkout branch " ++ name ++ " from tag " ++ show tag])
 
     gitPushTags :: String -> ES ()
-    gitPushTags remote = do -- git ["push", remote, show branch, "--tags"] >> return ()
+    gitPushTags remote = do -- git ["push", remote, "--tags"] >> return ()
       wOutput . oCommands %= (++ ["git push " ++ remote ++ " --tags"])
+
+    gitPush :: String -> Branch -> ES ()
+    gitPush remote branch = do -- git ["push", remote, show branch] >> return ()
+      wOutput . oCommands %= (++ ["git push " ++ remote ++ " " ++ show branch])
 
     gitRemoveTag :: Tag -> ES ()
     gitRemoveTag tag = do
@@ -137,10 +148,14 @@ interpret (Free x) = case x of
       wOutput . oCommands %= (++ ["git branch -d " ++ show branch])
       wOutput . oCommands %= (++ ["git push origin :" ++ show branch])
 
-    gitMergeNoFF :: Branch -> ES ()
-    gitMergeNoFF branch = do
-      wOutput . oCommands %= (++ ["git merge --no-ff " ++ show branch])
+    gitMergeNoFF :: Show a => a -> ES ()
+    gitMergeNoFF commitish =
+      wOutput . oCommands %= (++ ["git merge --no-ff " ++ show commitish])
 
-    outputMessage :: String -> ES ()
-    outputMessage message = wOutput . oStdOut %= (++ [message])
+    gitPullRebase :: ES ()
+    gitPullRebase = 
+      wOutput . oCommands %= (++ ["git pull --rebase"])
+
+    logMessage :: String -> ES ()
+    logMessage message = wOutput . oStdOut %= (++ [message])
 

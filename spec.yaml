@@ -67,24 +67,49 @@ tests:
                   stdout: 
                     - "Started hotfix: release/1.2.3/hotfix/hot-fixing, fix stuff!"
 
-
-            - name: "Start a hotfix"
+      tests:
+        - name: "Hotfix in progress"
+          spec:
+            input:
+              tags:
+                - "release/1.2.3\n"
+              branches:
+                - "release/1.2.3/hotfix/hot-fixing"
+          tests:
+            - name: "Not yet completed"
               spec:
                 input:
                   prompts:
-                    - question: "Choose your adventure: Start new release (0), Start hotfix (1)"
-                      answer: "1"
-                    - question: "What is the hotfix for? (specify dash separated descriptor, e.g. 'signup-is-broken')"
-                      answer: "hot-fixing"
+                    - question: "Is the hotfix complete? y(es)/n(o)"
+                      answer: "n"
                 output:
                   commands:
                     - "git tags"
                     - "git branch"
-                    - "git checkout release/1.2.3"
-                    - "git checkout -b release/1.2.3/hotfix/hot-fixing"
-                  stdout: 
-                    - "Started hotfix: release/1.2.3/hotfix/hot-fixing, fix stuff!"
+                    - "git checkout release/1.2.3/hotfix/hot-fixing"
+                  stdout:
+                    - "Hotfix found: release/1.2.3/hotfix/hot-fixing"
+                    - "Keep fixing that code!"
 
+            - name: "Completed"
+              spec:
+                input:
+                  prompts:
+                    - question: "Is the hotfix complete? y(es)/n(o)"
+                      answer: "y"
+                output:
+                  commands:
+                    - "git tags"
+                    - "git branch"
+                    - "git checkout release/1.2.3/hotfix/hot-fixing"
+                    - "git tag release/1.2.4-rc1"
+                    - "git push origin --tags"
+                    - "git checkout release/1.2.4-rc1"
+                    - "git branch -d release/1.2.3/hotfix/hot-fixing"
+                    - "git push origin :release/1.2.3/hotfix/hot-fixing"
+                  stdout:
+                    - "Hotfix found: release/1.2.3/hotfix/hot-fixing"
+                    - "Started new release: release/1.2.4-rc1, deploy to preproduction and confirm the release is good to go!"
 
       tests:
         - name: "Release is in progress"
@@ -92,30 +117,57 @@ tests:
             input:
               tags:
                 - "release/1.2.3\n"
-                - "release/1.2.3-rc3\n"
-                - "release/1.3.0-rc1\n"
-                - "release/1.3.0-rc2\n"
           tests:
-
             - name: "Release candidate is GOOD"
               spec:
                 input:
                   prompts:
                     - question: "Is this release candidate good? y(es)/n(o)"
                       answer: "y"
-                output:
-                  commands:
-                    - "git tags"
-                    - "git branch"
-                    - "git checkout release/1.3.0-rc2"
-                    - "git tag release/1.3.0"
-                    - "git push origin --tags"
-                    - "git checkout release/1.3.0"
-                  stdout: 
-                    - "Release candidate found: release/1.3.0-rc2"
-                    - "Created tag: release/1.3.0"
-                    - "Deploy to production, cowboy!"
-                    - "rake production deploy[release/1.3.0]"
+              tests:
+                - name: "Minor version bump"
+                  spec:
+                    input:
+                      tags:
+                        - "release/1.3.0-rc1\n"
+                        - "release/1.3.0-rc2\n"
+                    output:
+                      commands:
+                        - "git tags"
+                        - "git branch"
+                        - "git checkout release/1.3.0-rc2"
+                        - "git tag release/1.3.0"
+                        - "git push origin --tags"
+                        - "git checkout release/1.3.0"
+                      stdout:
+                        - "Release candidate found: release/1.3.0-rc2"
+                        - "Created tag: release/1.3.0" 
+                        - "Deploy to production cowboy!"
+                        - "rake production deploy[release/1.3.0]"
+
+                - name: "Patch version bump (hotfix)"
+                  spec:
+                    input:
+                      tags:
+                        - "release/1.2.4-rc1\n"
+                        - "release/1.2.4-rc2\n"
+                    output:
+                      commands:
+                        - "git tags"
+                        - "git branch"
+                        - "git checkout release/1.2.4-rc2"
+                        - "git tag release/1.2.4"
+                        - "git push origin --tags"
+                        - "git checkout integration"
+                        - "git pull --rebase"
+                        - "git merge --no-ff release/1.2.4"
+                        - "git push origin integration"
+                        - "git checkout release/1.2.4"
+                      stdout:
+                        - "Release candidate found: release/1.2.4-rc2"
+                        - "Created tag: release/1.2.4"
+                        - "Deploy to production cowboy!"
+                        - "rake production deploy[release/1.2.4]"
 
 
             - name: "Release candidate is BAD, initiate bug fix"
@@ -126,6 +178,9 @@ tests:
                       answer: "n"
                     - question: "What bug are you fixing? (specify dash separated descriptor, e.g. 'theres-a-bug-in-the-code')"
                       answer: "theres-a-bug-in-the-code"
+                  tags:
+                    - "release/1.3.0-rc1\n"
+                    - "release/1.3.0-rc2\n"
                 output:
                   commands:
                     - "git tags"
@@ -137,12 +192,15 @@ tests:
                     - "Release candidate found: release/1.3.0-rc2"
                     - "Created branch: release/1.3.0-rc2/bugs/theres-a-bug-in-the-code, fix your bug!"
 
+
             - name: "Release candidate was BAD, bug fix was in progress"
               spec:
                 input:
                   branches:
                     - "release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
-
+                  tags:
+                    - "release/1.3.0-rc1\n"
+                    - "release/1.3.0-rc2\n"
               tests:
                 - name: "Bug fix complete"
                   spec:
@@ -150,7 +208,6 @@ tests:
                       prompts:
                         - question: "Is the bug fixed? y(es)/n(o)"
                           answer: "y"
-
                     output:
                       commands:
                         - "git tags"
@@ -164,7 +221,7 @@ tests:
                         - "git checkout release/1.3.0-rc3"
                         - "git branch -d release/1.3.0-rc2/tmp"
                         - "git push origin :release/1.3.0-rc2/tmp"
-                      stdout: 
+                      stdout:
                         - "Bugfix found: release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
                         - "Created new release candidate: release/1.3.0-rc3, you'll get it this time!"
 
@@ -183,3 +240,5 @@ tests:
                       stdout: 
                         - "Bugfix found: release/1.3.0-rc2/bugs/theres-a-bug-in-the-code"
                         - "Keep fixing that code!"
+
+
