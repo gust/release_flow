@@ -137,10 +137,17 @@ program = runEitherT . runReaderT release
         ReleaseInProgressBugfix latestReleaseCandidate branch -> do
           outputMessage $ "Bugfix found: " ++ show branch
           yesOrNo <- promptForYesOrNo "Is the bug fixed? y(es)/n(o)"
+          let integration = Branch "integration"
           case yesOrNo of
             True -> do
               gitCheckoutBranch $ tmpBranch latestReleaseCandidate
               gitMergeNoFF branch
+              gitCheckoutBranch integration
+              gitPullRebase
+              gitMergeNoFF branch
+              gitPush "origin" integration
+              gitCheckoutBranch $ tmpBranch latestReleaseCandidate
+
               gitRemoveBranch branch
               let nextReleaseCandidateTag = getNextMinorReleaseCandidateTag latestReleaseCandidate
               gitTag $ nextReleaseCandidateTag
