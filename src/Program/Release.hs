@@ -231,7 +231,7 @@ program = runEitherT . runReaderT release
 
         outputReleaseMessages releaseTag = do
           outputMessage $ "Created tag: " ++ (show releaseTag)
-          outputMessage "Deploy to production cowboy!"
+          outputMessage "Deploy to production you jive turkey!"
 
         maybeToEither = flip maybe Right . Left
 
