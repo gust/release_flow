@@ -186,7 +186,7 @@ releaseInProgressGoodMinorRelease = FakeWorldTestCase {
         ]
     , _oStdOut  = [
           "Release candidate found: release/1.3.0-rc2"
-        , "Created tag: release/1.3.0, deploy to production cowboy!"
+        , "Created tag: release/1.3.0, deploy to production you jive turkey!"
         ]
     , _oStdErr = [ ]
   }
@@ -221,7 +221,7 @@ releaseInProgressGoodPatchRelease = FakeWorldTestCase {
         ]
     , _oStdOut  = [
           "Release candidate found: release/1.2.4-rc2"
-        , "Created tag: release/1.2.4, deploy to production cowboy!"
+        , "Created tag: release/1.2.4, deploy to production you jive turkey!"
         ]
     , _oStdErr = [ ]
   }
